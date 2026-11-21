@@ -97,6 +97,7 @@
       "author": "Author",
       "size": "Size",
       "score": "Score",
+      "findings": "Findings",
       "status": "Status",
       "cost": "Cost",
       "updated": "Updated"
@@ -116,5 +117,9 @@
   "cost": {
     "title": "Run cost (USD) — OpenRouter-reported or estimated from model prices",
     "tokensTotal": "{count, number} tok"
+  },
+  "findingsPreview": {
+    "header": "{count, plural, one {# finding} other {# findings}} in this run",
+    "trigger": "Show {count, plural, one {# finding} other {# findings}}"
   }
 }

@@ -6,7 +6,7 @@
 import { useTranslations } from "next-intl";
 import { SEV } from "@devdigest/ui";
 import type { Severity } from "@devdigest/shared";
-import { FILTER_SEVERITIES } from "./constants";
+import { SEVERITIES } from "@/lib/findings-severity";
 import { s } from "./styles";
 
 export function SeverityFilter({
@@ -21,7 +21,7 @@ export function SeverityFilter({
   const t = useTranslations("prReview");
   return (
     <div role="group" aria-label={t("panel.severityFilterLabel")} style={s.sevGroup}>
-      {FILTER_SEVERITIES.map((sev) => {
+      {SEVERITIES.map((sev) => {
         const isActive = active === sev;
         return (
           <button

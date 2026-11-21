@@ -1,16 +1,9 @@
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import { FILTER_SEVERITIES, LOW_CONFIDENCE_THRESHOLD, SEVERITY_ORDER } from "./constants";
+import { LOW_CONFIDENCE_THRESHOLD, SEVERITY_ORDER } from "./constants";
 
 /** Drop low-confidence findings when `hideLow` is on. */
 export function confidentFindings(findings: FindingRecord[], hideLow: boolean): FindingRecord[] {
   return hideLow ? findings.filter((f) => f.confidence >= LOW_CONFIDENCE_THRESHOLD) : findings;
-}
-
-/** Number of findings per severity; every severity is present (0 when none). */
-export function countBySeverity(findings: FindingRecord[]): Record<Severity, number> {
-  const counts = Object.fromEntries(FILTER_SEVERITIES.map((sev) => [sev, 0])) as Record<Severity, number>;
-  for (const f of findings) counts[f.severity] += 1;
-  return counts;
 }
 
 /** Apply the confidence and (optional) severity filters, then sort by severity. */

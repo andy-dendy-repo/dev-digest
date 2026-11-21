@@ -46,6 +46,11 @@ export function FindingsTab({
     () => new Map((prRuns ?? []).map((r) => [r.run_id, r])),
     [prRuns],
   );
+  // run_id → that run's findings, for the timeline's severity icons + preview.
+  const findingsByRun = React.useMemo(
+    () => new Map(runs.flatMap((rv) => (rv.run_id ? [[rv.run_id, rv.findings] as const] : []))),
+    [runs],
+  );
 
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
@@ -140,6 +145,7 @@ export function FindingsTab({
             onOpenTrace={handleOpenTrace}
             onGoToReview={handleGoToReview}
             onDelete={handleDelete}
+            findingsByRun={findingsByRun}
           />
         </div>
       )}

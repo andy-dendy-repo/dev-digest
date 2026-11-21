@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import { countBySeverity, visibleFindings } from "./helpers";
+import { visibleFindings } from "./helpers";
 
 function finding(id: string, severity: Severity, confidence: number): FindingRecord {
   return {
@@ -29,13 +29,6 @@ const FINDINGS = [
   finding("c-low", "CRITICAL", 0.5),
   finding("w2", "WARNING", 0.7),
 ];
-
-describe("countBySeverity", () => {
-  it("counts every severity and reports 0 for missing ones", () => {
-    expect(countBySeverity(FINDINGS)).toEqual({ CRITICAL: 1, WARNING: 2, SUGGESTION: 1 });
-    expect(countBySeverity([])).toEqual({ CRITICAL: 0, WARNING: 0, SUGGESTION: 0 });
-  });
-});
 
 describe("visibleFindings", () => {
   it("sorts by severity and keeps everything without filters", () => {
