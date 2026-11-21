@@ -5,6 +5,7 @@ import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { FindingsExport } from "../FindingsExport";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -79,6 +80,7 @@ export function FindingsTab({
 
   return (
     <section>
+      {prId && <FindingsExport prId={prId} />}
       {liveRunIds.length > 0 && (
         <div style={s.liveRunSection}>
           <SectionLabel
