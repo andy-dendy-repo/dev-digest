@@ -16,6 +16,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-21 — File rank is PageRank only; `hotness` is always 0 ("Option B").** Don't treat `hotness` as a signal or make it non-zero without first deepening clones, because clones are shallow (`CLONE_DEPTH = 1`) so there is no churn history. (`server/src/modules/repo-intel/pipeline/rank.ts`)
 - **2026-11-21 — Run cost comes from the engine, never recompute it.** Use `outcome.costUsd` from `reviewPullRequest` (OpenRouter's real `usage.cost`, else the PriceBook estimate) when persisting `agent_runs.cost_usd`, because recomputing tokens × price would diverge from the OpenRouter dashboard; failed/cancelled runs write `null`, not 0. (`server/src/modules/reviews/run-executor.ts`)
 - **2026-11-21 — `setupRepoAndPr` always creates PR #482 in a fresh repo.** Change the second PR's `number` before moving it into the same repo in a test, because `pull_requests` is unique on (repo_id, number). (`server/test/reviews.it.test.ts`)
+- **2026-11-21 — PR list findings = briefs of the latest `kind='review'` review.** Take `latest_findings` from the same newest review that gives the list its score (one extra `IN` query on `findings`), shaped by `toFindingBrief`/`sortBriefs`; `rollupSeverities` in the same file is an unused leftover, because counts are derived client-side from the briefs. (`server/src/modules/pulls/status.ts`, `server/src/modules/pulls/routes.ts`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
@@ -28,6 +29,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 <!-- ### YYYY-MM-DD — <task>, then 2–4 lines. -->
 ### 2026-11-21 — M1 run cost badge (server side)
 Re-added `agent_runs.cost_usd` (migration 0010, `doublePrecision`), persisted from `outcome.costUsd`, exposed on `RunSummary`, `RunStats` and `PrMeta` (PR list = SUM over `done` runs via `costByPull`). Run log now has a `Usage: in→out tokens · $X` line. Not yet verified against a live OpenRouter run.
+### 2026-11-21 — M1 findings preview (server side)
+Added `FindingBrief` and `PrMeta.latest_findings` (both `vendor/shared` copies); `GET /repos/:id/pulls` returns the latest review's findings, most severe first, rationale cut to 240 chars; `null` when unreviewed. Covered by contract, unit and integration tests.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
