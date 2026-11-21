@@ -62,6 +62,21 @@ export const Finding = z.object({
 });
 export type Finding = z.infer<typeof Finding>;
 
+/** FindingBrief — a finding as shown in a read-only preview (PR list Findings
+ *  column). `rationale` may be shortened by the server. */
+export const FindingBrief = Finding.pick({
+  id: true,
+  severity: true,
+  category: true,
+  title: true,
+  file: true,
+  start_line: true,
+  end_line: true,
+  confidence: true,
+  rationale: true,
+});
+export type FindingBrief = z.infer<typeof FindingBrief>;
+
 /** Review — the consolidated structured output of a single agent run. */
 export const Review = z.object({
   verdict: Verdict,

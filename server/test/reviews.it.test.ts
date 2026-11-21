@@ -246,6 +246,42 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('PR list FINDINGS = briefs of the latest review only, most severe first; null when unreviewed', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const { pr: unreviewed } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    await pg.handle.db
+      .update(t.pullRequests)
+      .set({ repoId: repo.id, number: 483 })
+      .where(eq(t.pullRequests.id, unreviewed.id));
+
+    const [older] = await pg.handle.db
+      .insert(t.reviews)
+      .values({ workspaceId, prId: pr.id, kind: 'review', score: 90, createdAt: new Date('2026-01-01') })
+      .returning();
+    const [latest] = await pg.handle.db
+      .insert(t.reviews)
+      .values({ workspaceId, prId: pr.id, kind: 'review', score: 40, createdAt: new Date('2026-02-01') })
+      .returning();
+    const f = { file: 'src/a.ts', startLine: 1, endLine: 2, category: 'bug', confidence: 0.8 };
+    await pg.handle.db.insert(t.findings).values([
+      { ...f, reviewId: older!.id, severity: 'CRITICAL', title: 'old review finding', rationale: 'r' },
+      { ...f, reviewId: latest!.id, severity: 'SUGGESTION', title: 'nit', rationale: 'r' },
+      { ...f, reviewId: latest!.id, severity: 'CRITICAL', title: 'secret', rationale: 'y'.repeat(600) },
+      { ...f, reviewId: latest!.id, severity: 'WARNING', title: 'n+1', rationale: 'r' },
+    ]);
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+    const row = list.find((p: { id: string }) => p.id === pr.id);
+    expect(row.score).toBe(40);
+    expect(row.latest_findings.map((b: { title: string }) => b.title)).toEqual(['secret', 'n+1', 'nit']);
+    expect(row.latest_findings[0].rationale.length).toBeLessThan(600);
+    expect(row.latest_findings[0]).toMatchObject({ severity: 'CRITICAL', start_line: 1, end_line: 2 });
+    expect(list.find((p: { id: string }) => p.id === unreviewed.id).latest_findings).toBeNull();
+
+    await app.close();
+  });
+
   it('dual-provider structured output: anthropic provider returns the same Review shape', async () => {
     const app = await appWith(REVIEW_FIXTURE, 'anthropic');
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
