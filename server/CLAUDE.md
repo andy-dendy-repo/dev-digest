@@ -45,4 +45,4 @@ js-tiktoken · openai 4 / @anthropic-ai/sdk 0.33
 - **Read [README.md](README.md) when** adding a route, an env var, or changing what goes into the review prompt.
 - **Read [src/modules/repo-intel/README.md](src/modules/repo-intel/README.md) when** touching indexing, ranking, the repo map, or the `repoIntel` facade.
 - **Read [specs/](specs/README.md) before** building a server feature; **[docs/](docs/README.md)** for design decisions.
-- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; append new lessons.
+- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; record new lessons with `/engineering-insights`.

@@ -36,4 +36,4 @@ Vitest 2 + jsdom + Testing Library 16
 - **Read [README.md](README.md) when** adding or changing a route (route map).
 - **Read [src/vendor/ui/README.md](src/vendor/ui/README.md) when** building or changing UI.
 - **Read [specs/](specs/README.md) before** building a UI feature; **[docs/](docs/README.md)** for design decisions.
-- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; append new lessons.
+- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; record new lessons with `/engineering-insights`.

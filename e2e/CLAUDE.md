@@ -32,4 +32,4 @@ TypeScript 5.7 · tsx · Vercel agent-browser CLI (installed separately, see REA
 - **Read [README.md](README.md) when** running flows, adding a flow, or checking coverage.
 - **Read [../TESTING.md](../TESTING.md) when** deciding whether a check belongs in e2e or a unit suite.
 - **Read [specs/README.md](specs/README.md) before** adding a flow or a spec; **[docs/](docs/README.md)** for design decisions.
-- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; append new lessons.
+- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; record new lessons with `/engineering-insights`.

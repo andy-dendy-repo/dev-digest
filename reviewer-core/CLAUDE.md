@@ -36,4 +36,4 @@ TypeScript 5.7 · Zod 3.24 · Vitest 2 · openai 4 (used by the OpenRouter provi
 - **Read [README.md](README.md) when** you need the pipeline or the public API.
 - **Read [../server/README.md](../server/README.md#review-context-non-obvious) when** you need the reasoning behind the injection guard and grounding.
 - **Read [specs/](specs/README.md) before** changing engine behaviour; **[docs/](docs/README.md)** for design decisions.
-- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; append new lessons.
+- **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; record new lessons with `/engineering-insights`.

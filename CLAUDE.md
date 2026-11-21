@@ -43,5 +43,6 @@ This file is a map. Module rules live in each module's own `CLAUDE.md`.
 - **Read [server/README.md](server/README.md) when** touching API routes, env vars, or DI.
 - **Read [TESTING.md](TESTING.md) when** adding, moving, or naming tests, or touching CI.
 - **Read [specs/](specs/README.md) and `<module>/specs/` before** building a feature. No spec → ask.
-- **Read `<module>/INSIGHTS.md` before** a non-trivial change in that module; **append** to it when you learn something non-obvious. Cross-module lessons → [INSIGHTS.md](INSIGHTS.md).
+- **Before working in a module, read its `INSIGHTS.md`** and treat it as high-confidence guidance unless told otherwise. Cross-module lessons → [INSIGHTS.md](INSIGHTS.md).
+- **At the end of a substantive task, run `/engineering-insights wrap-up`** — don't skip this step. Capture non-obvious findings as you go (`/engineering-insights capture`).
 - **Read [docs/agent-prompts/](docs/agent-prompts/README.md) when** editing the built-in reviewer agents' prompts.

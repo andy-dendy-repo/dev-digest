@@ -1,24 +1,28 @@
 # INSIGHTS — project-wide (cross-module)
 
-Lessons learned here: what we tried, what broke, and why. Read before a non-trivial
-change; append when you learn something the code doesn't make obvious.
+Non-obvious lessons for this module, read before non-trivial work here.
+**Append-only:** add entries at the end of a section; never rewrite or delete (corrections → `Supersedes "<title>" (<date>): …`).
+Entry format: `- **YYYY-MM-DD — <title>.** <Do/avoid X> when <context>, because <why>. (\`path\`)`
+Record with `/engineering-insights` (capture · wrap-up · review). Rules belong in `CLAUDE.md`, design in `docs/`.
 
-- **Belongs here:** failed approaches, surprising behaviour, the reason behind a non-obvious choice.
-- **Not here:** rules (→ `CLAUDE.md`), how things work (→ `docs/`), planned work (→ `specs/`).
-- Newest entry first. When a lesson hardens into a rule, add the rule to `CLAUDE.md` and link back here.
+## What Works
+<!-- Approaches and solutions that proved themselves. -->
 
-Template:
+## What Doesn't Work
+<!-- Dead ends and antipatterns — always with WHY. Most-skipped, most valuable. -->
 
-```
-### YYYY-MM-DD — <short title>
-**What happened:** …
-**Why:** …
-**How to apply:** …
-```
+## Codebase Patterns
+<!-- Non-default conventions and architecture decisions. -->
+- **2026-11-21 — The two `vendor/shared` contract copies have drifted.** Before changing or relying on a Zod contract, `diff -r server/src/vendor/shared client/src/vendor/shared` and update both deliberately, because each package resolves `@devdigest/shared` to its own unlinked copy. (`server/src/vendor/shared`, `client/src/vendor/shared`)
 
----
+## Tool & Library Notes
+<!-- Dependency quirks, with library + version. -->
 
-### 2026-11-21 — The two `vendor/shared` contract copies have drifted
-**What happened:** `server/src/vendor/shared` and `client/src/vendor/shared` were meant to be identical, but several contract files now differ.
-**Why:** the copies are not linked; each package resolves `@devdigest/shared` to its own folder, so edits to one never reach the other.
-**How to apply:** before changing or relying on a contract, `diff -r server/src/vendor/shared client/src/vendor/shared` and update both deliberately.
+## Recurring Errors & Fixes
+<!-- Exact error message → fix. -->
+
+## Session Notes
+<!-- ### YYYY-MM-DD — <task>, then 2–4 lines. -->
+
+## Open Questions
+<!-- Unresolved or unverified items. -->
