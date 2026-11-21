@@ -41,6 +41,12 @@ export function FindingsTab({
   onDelete,
   onRunDone,
 }: FindingsTabProps) {
+  // run_id → run row, so each review's VerdictBanner can show that run's cost.
+  const runsById = React.useMemo(
+    () => new Map((prRuns ?? []).map((r) => [r.run_id, r])),
+    [prRuns],
+  );
+
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
   }, [liveRunIds, cancelMutation]);
@@ -158,6 +164,7 @@ export function FindingsTab({
           <ReviewRunAccordion
             key={review.id}
             review={review}
+            run={review.run_id ? runsById.get(review.run_id) : undefined}
             prId={prId}
             defaultOpen={i === 0}
             repoFullName={repoFullName}

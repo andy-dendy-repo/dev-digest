@@ -22,6 +22,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## Session Notes
 <!-- ### YYYY-MM-DD — <task>, then 2–4 lines. -->
+### 2026-11-21 — M1 run cost badge
+Added a `wait --text "Cost"` step (PR list COST column) to `02-repo-pulls-detail.flow.json`. Flow not run in this session.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
