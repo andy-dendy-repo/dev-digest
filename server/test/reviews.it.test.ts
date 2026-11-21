@@ -209,6 +209,40 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
 
+    // M1 run cost badge — the engine's costUsd is persisted (mock = $0.001/call)
+    // and surfaced identically on the run row, the trace and the run history.
+    expect(run!.costUsd).toBeGreaterThan(0);
+    expect(trace.stats.cost_usd).toBeCloseTo(run!.costUsd!, 9);
+    expect(trace.log.some((l: { msg: string }) => l.msg.startsWith('Usage: '))).toBe(true);
+    const runs = (await app.inject({ method: 'GET', url: `/pulls/${pr.id}/runs` })).json();
+    expect(runs[0].cost_usd).toBeCloseTo(run!.costUsd!, 9);
+
+    await app.close();
+  });
+
+  it('PR list COST = sum of completed runs; failed runs and unpriced runs are excluded', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const { pr: unreviewed } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    await pg.handle.db
+      .update(t.pullRequests)
+      .set({ repoId: repo.id, number: 483 })
+      .where(eq(t.pullRequests.id, unreviewed.id));
+
+    const base = { workspaceId, prId: pr.id, provider: 'openrouter', model: 'm' };
+    await pg.handle.db.insert(t.agentRuns).values([
+      { ...base, status: 'done', costUsd: 0.0123 },
+      { ...base, status: 'done', costUsd: 0.0017 },
+      { ...base, status: 'done', costUsd: null }, // unpriced model → ignored
+      { ...base, status: 'failed', costUsd: 0.5 }, // not completed → ignored
+    ]);
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+    const row = list.find((p: { id: string }) => p.id === pr.id);
+    expect(row.cost_usd).toBeCloseTo(0.014, 9);
+    // never-reviewed PR → null ("—"), not 0
+    expect(list.find((p: { id: string }) => p.id === unreviewed.id).cost_usd).toBeNull();
+
     await app.close();
   });
 

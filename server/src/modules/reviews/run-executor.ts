@@ -32,6 +32,7 @@ export type RunOutcome = {
   findings: FindingRow[];
   grounding: string;
   raw: Review;
+  costUsd: number | null;
 };
 
 /**
@@ -80,6 +81,7 @@ export class ReviewRunExecutor {
             durationMs: 0,
             tokensIn: 0,
             tokensOut: 0,
+            costUsd: null,
             findingsCount: 0,
             grounding: '0/0 passed',
             error: msg,
@@ -118,6 +120,7 @@ export class ReviewRunExecutor {
             agent: agent.name,
             findings: outcome.findings.length,
             grounding: outcome.grounding,
+            costUsd: outcome.costUsd,
             durationMs: Date.now() - agentStart,
           },
           `review: agent "${agent.name}" done — ${outcome.findings.length} finding(s)`,
@@ -210,7 +213,11 @@ export class ReviewRunExecutor {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
-      const { tokensIn, tokensOut, grounding } = outcome;
+      const { tokensIn, tokensOut, costUsd, grounding } = outcome;
+      // Same numbers the UI shows (run cost badge) — lets a price be checked
+      // against this run's log and the OpenRouter dashboard.
+      const costText = costUsd == null ? 'cost unknown' : `$${costUsd.toFixed(6)}`;
+      runLog.info(`Usage: ${tokensIn}→${tokensOut} tokens · ${costText}`);
 
       const keptFindings = outcome.review.findings;
 
@@ -245,6 +252,7 @@ export class ReviewRunExecutor {
         durationMs,
         tokensIn,
         tokensOut,
+        costUsd,
         findingsCount: findingRows.length,
         grounding,
         score: outcome.review.score,
@@ -265,6 +273,7 @@ export class ReviewRunExecutor {
           duration_ms: durationMs,
           tokens_in: tokensIn,
           tokens_out: tokensOut,
+          cost_usd: costUsd,
           findings: findingRows.length,
           grounding,
         },
@@ -286,7 +295,7 @@ export class ReviewRunExecutor {
       await this.repo.saveRunTrace(runId, trace);
       this.container.runBus.complete(runId);
 
-      return { review, findings: findingRows, grounding, raw: outcome.review };
+      return { review, findings: findingRows, grounding, raw: outcome.review, costUsd };
     } catch (err) {
       // Failure/cancel: persist status + the error text + the log-so-far so the
       // run (and WHY it failed) is visible on the UI after a reload.
@@ -300,6 +309,7 @@ export class ReviewRunExecutor {
           durationMs: Date.now() - start,
           tokensIn: 0,
           tokensOut: 0,
+          costUsd: null,
           findingsCount: 0,
           grounding: '0/0 passed',
           error: msg,
@@ -421,7 +431,7 @@ export class ReviewRunExecutor {
         pr: pull.number,
         source: 'local',
       },
-      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, findings: 0, grounding },
+      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, cost_usd: null, findings: 0, grounding },
       prompt_assembly: { system: agent.systemPrompt, skills: null, memory: null, specs: null, user: '' },
       tool_calls: [],
       raw_output: '',
