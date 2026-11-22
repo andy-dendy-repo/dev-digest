@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provider } from './knowledge.js';
+import { FindingBrief } from './findings.js';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -174,6 +175,9 @@ export const PrMeta = z.object({
   score: z.number().int().nullish(),
   // Total USD cost of the PR's completed runs (list endpoint only; null = no costed run).
   cost_usd: z.number().nullish(),
+  // Findings of the PR's latest review, most severe first (list endpoint only;
+  // null = never reviewed, [] = latest review found nothing).
+  latest_findings: z.array(FindingBrief).nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

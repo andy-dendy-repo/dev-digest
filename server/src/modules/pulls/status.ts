@@ -1,4 +1,4 @@
-import type { PrStatus } from '@devdigest/shared';
+import type { FindingBrief, PrStatus } from '@devdigest/shared';
 
 /**
  * PR-list rollup helpers (pure — no DB / `this`, so they unit-test cleanly).
@@ -28,6 +28,52 @@ export function rollupSeverities(rows: { severity: string }[]): SeverityCounts {
     else if (r.severity === 'SUGGESTION') c.suggestion += 1;
   }
   return c;
+}
+
+/** Rationale is shortened to this many characters in the list payload. */
+export const BRIEF_RATIONALE_MAX = 240;
+
+const SEVERITY_RANK: Record<string, number> = { CRITICAL: 0, WARNING: 1, SUGGESTION: 2 };
+
+/** A `findings` row as needed for a brief (camelCase DB shape). */
+export interface FindingBriefRow {
+  id: string;
+  severity: string;
+  category: string;
+  title: string;
+  file: string;
+  startLine: number;
+  endLine: number;
+  confidence: number;
+  rationale: string;
+}
+
+/** DB finding row → `FindingBrief`, rationale shortened to BRIEF_RATIONALE_MAX. */
+export function toFindingBrief(row: FindingBriefRow): FindingBrief {
+  const rationale =
+    row.rationale.length > BRIEF_RATIONALE_MAX
+      ? `${row.rationale.slice(0, BRIEF_RATIONALE_MAX - 1).trimEnd()}…`
+      : row.rationale;
+  return {
+    id: row.id,
+    severity: row.severity as FindingBrief['severity'],
+    category: row.category as FindingBrief['category'],
+    title: row.title,
+    file: row.file,
+    start_line: row.startLine,
+    end_line: row.endLine,
+    confidence: row.confidence,
+    rationale,
+  };
+}
+
+/** Most severe first (CRITICAL → WARNING → SUGGESTION), then highest confidence. */
+export function sortBriefs(briefs: FindingBrief[]): FindingBrief[] {
+  return [...briefs].sort(
+    (a, b) =>
+      (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
+      b.confidence - a.confidence,
+  );
 }
 
 /**

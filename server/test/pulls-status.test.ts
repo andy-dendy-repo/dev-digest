@@ -6,7 +6,15 @@
  * + age, so it gets unit coverage independent of the route's queries.
  */
 import { describe, it, expect } from 'vitest';
-import { deriveReviewStatus, rollupSeverities, STALE_DAYS } from '../src/modules/pulls/status.js';
+import {
+  BRIEF_RATIONALE_MAX,
+  deriveReviewStatus,
+  rollupSeverities,
+  sortBriefs,
+  STALE_DAYS,
+  toFindingBrief,
+  type FindingBriefRow,
+} from '../src/modules/pulls/status.js';
 
 const DAY = 86_400_000;
 const now = Date.UTC(2026, 5, 11);
@@ -64,5 +72,47 @@ describe('rollupSeverities', () => {
 
   it('is all-zero for no findings', () => {
     expect(rollupSeverities([])).toEqual({ critical: 0, warning: 0, suggestion: 0 });
+  });
+});
+
+describe('finding briefs (PR list Findings column)', () => {
+  const row = (o: Partial<FindingBriefRow>): FindingBriefRow => ({
+    id: 'f',
+    severity: 'WARNING',
+    category: 'bug',
+    title: 't',
+    file: 'src/a.ts',
+    startLine: 1,
+    endLine: 2,
+    confidence: 0.8,
+    rationale: 'short',
+    ...o,
+  });
+
+  it('maps a DB row to snake_case and shortens long rationale only', () => {
+    expect(toFindingBrief(row({ id: 'f1' }))).toEqual({
+      id: 'f1',
+      severity: 'WARNING',
+      category: 'bug',
+      title: 't',
+      file: 'src/a.ts',
+      start_line: 1,
+      end_line: 2,
+      confidence: 0.8,
+      rationale: 'short',
+    });
+    const long = toFindingBrief(row({ rationale: 'x'.repeat(1000) })).rationale;
+    expect(long).toHaveLength(BRIEF_RATIONALE_MAX);
+    expect(long.endsWith('…')).toBe(true);
+  });
+
+  it('sorts most severe first, then by confidence', () => {
+    const briefs = [
+      row({ id: 's', severity: 'SUGGESTION', confidence: 0.99 }),
+      row({ id: 'w-low', severity: 'WARNING', confidence: 0.6 }),
+      row({ id: 'c', severity: 'CRITICAL', confidence: 0.7 }),
+      row({ id: 'w-high', severity: 'WARNING', confidence: 0.9 }),
+    ].map(toFindingBrief);
+    expect(sortBriefs(briefs).map((b) => b.id)).toEqual(['c', 'w-high', 'w-low', 's']);
   });
 });

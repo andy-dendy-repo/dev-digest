@@ -5,12 +5,14 @@ import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
 import type { RunSummary, PrCommit } from "@devdigest/shared";
 import { RunCostBadge } from "@/components/run-cost-badge";
+import { FindingsPreview, type FindingPreviewItem } from "@/components/findings-preview";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
  * and DB-backed so it survives reload. Showing commits between runs makes it
  * clear which commit each review ran against. Failed runs show their error
- * inline; clicking a run row opens its trace.
+ * inline; clicking a run row opens its trace. A settled run with findings shows
+ * severity icons that open a brief findings preview.
  *
  * The badge reflects the review OUTCOME, not just the run lifecycle: a finished
  * run that found blockers reads "rejected" (red), never a green "done". Outcome
@@ -91,9 +93,12 @@ export function RunHistory({
   onOpenTrace,
   onGoToReview,
   onDelete,
+  findingsByRun,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
+  /** run_id → that run's findings (from the PR's loaded reviews). */
+  findingsByRun?: ReadonlyMap<string, FindingPreviewItem[]>;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -150,6 +155,7 @@ export function RunHistory({
         const r = item.run;
         const o = outcomeOf(r);
         const settled = r.status === "done";
+        const runFindings = findingsByRun?.get(r.run_id) ?? [];
         return (
           <div key={`run:${r.run_id}`} style={rowStyle}>
             <Badge color={o.color} bg={o.bg} icon={o.icon}>
@@ -189,12 +195,17 @@ export function RunHistory({
                   {r.error}
                 </div>
               )}
-              {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
-              )}
+              {settled &&
+                (runFindings.length > 0 ? (
+                  <div>
+                    <FindingsPreview findings={runFindings} />
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                    {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+                  </div>
+                ))}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
               {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}

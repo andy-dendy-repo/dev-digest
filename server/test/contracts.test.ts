@@ -16,6 +16,7 @@ import {
   Settings,
   Repo,
   PrDetail,
+  PrMeta,
 } from '@devdigest/shared';
 
 /**
@@ -216,5 +217,36 @@ describe('platform DTOs', () => {
         commits: [],
       }),
     ).not.toThrow();
+  });
+  it('PrMeta.latest_findings (M1 findings preview): briefs, null or absent', () => {
+    const pr = {
+      number: 482,
+      title: 't',
+      author: 'a',
+      branch: 'b',
+      base: 'main',
+      head_sha: 'sha',
+      additions: 1,
+      deletions: 0,
+      files_count: 1,
+      status: 'open',
+    };
+    const brief = {
+      id: 'f1',
+      severity: 'CRITICAL',
+      category: 'security',
+      title: 'Hardcoded secret',
+      file: 'src/config.ts',
+      start_line: 12,
+      end_line: 12,
+      confidence: 0.98,
+      rationale: 'A live key is committed.',
+    };
+    expect(PrMeta.parse({ ...pr, latest_findings: [brief] }).latest_findings).toEqual([brief]);
+    expect(PrMeta.parse({ ...pr, latest_findings: null }).latest_findings).toBeNull();
+    expect(PrMeta.parse(pr).latest_findings).toBeUndefined();
+    expect(() =>
+      PrMeta.parse({ ...pr, latest_findings: [{ ...brief, severity: 'INFO' }] }),
+    ).toThrow();
   });
 });

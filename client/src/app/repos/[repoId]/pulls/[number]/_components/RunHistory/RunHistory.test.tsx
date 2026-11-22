@@ -6,8 +6,10 @@
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import type { RunSummary } from "@devdigest/shared";
+import type { FindingPreviewItem } from "@/components/findings-preview";
 import messages from "../../../../../../../../messages/en/prReview.json";
 import { RunHistory } from "./RunHistory";
 
@@ -35,10 +37,10 @@ function run(o: Partial<RunSummary>): RunSummary {
   };
 }
 
-function renderRuns(runs: RunSummary[]) {
+function renderRuns(runs: RunSummary[], findingsByRun?: Map<string, FindingPreviewItem[]>) {
   return render(
     <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <RunHistory runs={runs} onOpenTrace={() => {}} />
+      <RunHistory runs={runs} onOpenTrace={() => {}} findingsByRun={findingsByRun} />
     </NextIntlClientProvider>,
   );
 }
@@ -94,3 +96,36 @@ describe("RunHistory — run cost badge (M1)", () => {
     expect(screen.queryByTestId("run-cost")).not.toBeInTheDocument();
   });
 });
+
+describe("RunHistory — severity icons + findings preview (M1)", () => {
+  const finding = (id: string, severity: FindingPreviewItem["severity"], title: string): FindingPreviewItem => ({
+    id,
+    severity,
+    category: "perf",
+    title,
+    file: "src/api/users.ts",
+    start_line: 46,
+    end_line: 46,
+    confidence: 0.86,
+    rationale: "r",
+  });
+
+  it("a run with findings shows severity icons that open its preview; a run without keeps the text", async () => {
+    const user = userEvent.setup();
+    renderRuns(
+      [
+        run({ run_id: "with", findings_count: 2, blockers: 0 }),
+        run({ run_id: "without", agent_name: "General Reviewer", findings_count: 0, blockers: 0 }),
+      ],
+      new Map([["with", [finding("f1", "WARNING", "N+1 query"), finding("f2", "SUGGESTION", "Magic number")]]]),
+    );
+
+    expect(screen.getByText("0 finding(s)")).toBeInTheDocument();
+    expect(screen.queryByText("2 finding(s)")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show 2 findings" }));
+    expect(screen.getByRole("dialog", { name: "2 findings in this run" })).toBeInTheDocument();
+    expect(screen.getByText("N+1 query")).toBeInTheDocument();
+  });
+});
+

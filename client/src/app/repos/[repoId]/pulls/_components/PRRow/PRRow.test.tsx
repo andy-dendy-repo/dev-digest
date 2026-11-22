@@ -5,17 +5,22 @@
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import type { PrMeta } from "@devdigest/shared";
 import messages from "../../../../../../../messages/en/prReview.json";
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn() }),
 }));
 
 import { PRRow } from "./PRRow";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  push.mockClear();
+});
 
 function pr(o: Partial<PrMeta>): PrMeta {
   return {
@@ -63,3 +68,42 @@ describe("PRRow — COST column", () => {
     expect(screen.getByTestId("run-cost")).toHaveTextContent(/^—$/);
   });
 });
+
+describe("PRRow — FINDINGS column", () => {
+  const brief = (id: string, severity: "CRITICAL" | "WARNING" | "SUGGESTION", title: string) => ({
+    id,
+    severity,
+    category: "security" as const,
+    title,
+    file: "src/config.ts",
+    start_line: 12,
+    end_line: 12,
+    confidence: 0.98,
+    rationale: "r",
+  });
+
+  it("shows the latest review's severity icons; clicking them opens the preview, not the PR", async () => {
+    const user = userEvent.setup();
+    renderRow(
+      pr({
+        latest_findings: [brief("c1", "CRITICAL", "Hardcoded Stripe key"), brief("w1", "WARNING", "N+1 query")],
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Show 2 findings" }));
+    expect(screen.getByRole("dialog", { name: "2 findings in this run" })).toBeInTheDocument();
+    expect(screen.getByText("Hardcoded Stripe key")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+
+    // The rest of the row still opens the PR.
+    await user.click(screen.getByText("Add rate limiting to public API endpoints"));
+    expect(push).toHaveBeenCalledWith("/repos/repo-1/pulls/482");
+  });
+
+  it("shows '—' for an unreviewed PR and for a review without findings", () => {
+    renderRow(pr({ id: "a", latest_findings: null }));
+    renderRow(pr({ id: "b", latest_findings: [] }));
+    expect(screen.queryByRole("button", { name: /show/i })).not.toBeInTheDocument();
+  });
+});
+
