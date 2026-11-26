@@ -34,6 +34,7 @@ Vitest 2 + jsdom + Testing Library 16
 
 ## Read when…
 - **Read [README.md](README.md) when** adding or changing a route (route map).
+- **Use the [frontend-ui-architecture](../.claude/skills/frontend-ui-architecture/SKILL.md) skill when** adding, moving or splitting a component, hook, constant, helper or query (where code lives, import rules).
 - **Read [src/vendor/ui/README.md](src/vendor/ui/README.md) when** building or changing UI.
 - **Read [specs/](specs/README.md) before** building a UI feature; **[docs/](docs/README.md)** for design decisions.
 - **Read [INSIGHTS.md](INSIGHTS.md) before** a non-trivial change here; record new lessons via the [engineering-insights](../.claude/skills/engineering-insights/SKILL.md) skill.

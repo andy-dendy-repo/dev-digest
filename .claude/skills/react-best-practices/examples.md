@@ -88,7 +88,7 @@ const CATEGORIES = ['Tech', 'Startup', 'Lifestyle'];
 
 ---
 
-## Container / Presenter Split
+## Split by Concern: Data Hook + Rendering Child
 
 ```jsx
 // BAD: Mixed data fetching and rendering
@@ -99,8 +99,9 @@ const BlogList = () => {
   // ... 150 lines of rendering logic
 };
 
-// GOOD: Container fetches, presenter renders
-const BlogListContainer = () => {
+// GOOD: the hook fetches, BlogList handles states, a pure child renders the grid
+// (not a container/presenter split: the logic lives in the hook)
+const BlogList = () => {
   const { data, loading, error } = useBlogs();
   if (loading) return <Loader />;
   if (error) return <p>Error loading blogs</p>;

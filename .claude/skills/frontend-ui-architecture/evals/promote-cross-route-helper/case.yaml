@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: promote-cross-route-helper
+expected_outcome: |
+  modelColor and MODEL_COLOR are promoted to a domain-named module in client/src/lib/ (e.g. model-color.ts or next to model-label.ts), AgentCard and PRRow both import it via @/lib/..., PRRow does not import from the agents route, and no utils file or export * barrel is introduced.

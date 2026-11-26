@@ -7,9 +7,11 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## What Works
 <!-- Approaches and solutions that proved themselves. -->
+- **2026-11-26 — Skill evals: test the rules the code can't show.** When evaluating a repo-specific skill in `.claude/skills/`, assert on rules not visible in existing code (don't extend an `export *` barrel, stay inside the module, `queryOptions`), because baseline agents copy visible conventions (`_components/` nesting, promotion to `src/lib/`) and those assertions passed 13/15 with and without the skill. (`.claude/skills/frontend-ui-architecture/evals/`)
 
 ## What Doesn't Work
 <!-- Dead ends and antipatterns — always with WHY. Most-skipped, most valuable. -->
+- **2026-11-26 — Client-only tasks drift into `server/` and contracts.** Avoid letting an agent fill a missing API field by editing `server/` + both `vendor/shared` copies during a client task, because a no-skill eval run did exactly that for a UI chip; the skill now says to make the prop optional and report the field. (`.claude/skills/frontend-ui-architecture/SKILL.md`)
 
 ## Codebase Patterns
 <!-- Non-default conventions and architecture decisions. -->
@@ -17,6 +19,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
+- **2026-11-26 — skill-creator scripts need Python ≥ 3.10.** `generate_review.py` fails with `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'` under `/usr/bin/python3` (3.9.6); run it with `/opt/homebrew/bin/python3` (3.14). Version a skill under `metadata.version`, because `quick_validate.py` rejects unknown top-level frontmatter keys. (skill-creator `eval-viewer/generate_review.py`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -28,6 +31,9 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 Moved the root and per-module `CLAUDE.md` content into `AGENTS.md`, so every agent tool reads the same rules. Each `CLAUDE.md` is now a `@AGENTS.md` import shim. The root shim keeps the slash-command syntax, which only Claude Code has.
 The INSIGHTS/docs headers and the engineering-insights skill now point at `AGENTS.md`. The old mention in the `client/INSIGHTS.md` session note is left as is (append-only).
 Still to do: check in a live Claude Code session (`/memory`) that the nested module imports load.
+
+### 2026-11-26 — frontend-ui-architecture skill
+Researched 40 sources and wrote `.claude/skills/frontend-ui-architecture/` (SKILL.md v1.0.1, README with all sources, research notes, 3 eval cases). `react-best-practices` lost its container/presentational rule and numeric limits. Evals: iteration 1 was 93% with the skill and 93% without; iteration 2 was 100% vs 83% after the i18n-units and scope fixes. Description-trigger optimization was not run.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
