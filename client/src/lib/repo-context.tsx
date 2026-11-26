@@ -28,6 +28,8 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     try {
+      // Browser-only value read after hydration (see theme.tsx).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStored(localStorage.getItem("dd-repo"));
     } catch {
       /* ignore */

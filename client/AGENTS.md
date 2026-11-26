@@ -9,6 +9,7 @@ Vitest 2 + jsdom + Testing Library 16
 ## Commands (pnpm)
 - `pnpm dev` — web on :3000 (needs the API running)
 - `pnpm typecheck` — run before declaring work done
+- `pnpm lint` — ESLint 9 (`eslint.config.mjs`): import rules (no deep relative imports into lib/components, no `@devdigest/ui/*`, no `export *`), React hooks, Next.js; CI fails on any warning
 - `pnpm test` — vitest + jsdom (no Docker)
 - `pnpm build`
 

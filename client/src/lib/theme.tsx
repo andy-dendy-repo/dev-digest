@@ -16,6 +16,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // hydrate from the attribute set by the no-FOUC inline script
   React.useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as Theme) || "dark";
+    // Browser-only value read after hydration: a lazy useState initializer would
+    // differ between server and client HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(current);
   }, []);
 

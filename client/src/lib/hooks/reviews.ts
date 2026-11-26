@@ -159,15 +159,15 @@ export function useFindingAction() {
  */
 export function useRunEvents(runIds: string[], { onSettled }: { onSettled?: () => void } = {}) {
   const [events, setEvents] = React.useState<RunEvent[]>([]);
-  const [running, setRunning] = React.useState(false);
+  // The subscription whose streams have all closed; `running` is derived from it.
+  const [settledKey, setSettledKey] = React.useState<string | null>(null);
   const key = runIds.join(",");
+  const running = runIds.length > 0 && settledKey !== key;
   // Always the latest callback, without re-subscribing when it changes.
   const settled = React.useEffectEvent(() => onSettled?.());
 
   React.useEffect(() => {
     if (runIds.length === 0) return;
-    setEvents([]);
-    setRunning(true);
     const sources: EventSource[] = [];
     let open = runIds.length;
 
@@ -195,7 +195,7 @@ export function useRunEvents(runIds: string[], { onSettled }: { onSettled?: () =
         es.close();
         open -= 1;
         if (open === 0) {
-          setRunning(false);
+          setSettledKey(key);
           settled();
         }
       };
@@ -204,8 +204,11 @@ export function useRunEvents(runIds: string[], { onSettled }: { onSettled?: () =
 
     return () => {
       for (const es of sources) es.close();
-      setRunning(false);
+      // The next subscription starts from an empty log.
+      setEvents([]);
+      setSettledKey(null);
     };
+    // `key` stands for `runIds` (a new array every render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
