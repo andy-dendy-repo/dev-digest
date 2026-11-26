@@ -51,6 +51,16 @@ export class ReviewRepository implements ReviewWritePort {
     return reviewRepo.insertFindings(this.db, reviewId, findings);
   }
 
+  /** Latest `kind='review'` review per PR with its findings (PR list; `ReviewSummaryPort`). */
+  latestReviews(prIds: string[]): Promise<Map<string, { score: number | null; findings: FindingRow[] }>> {
+    return reviewRepo.latestReviews(this.db, prIds);
+  }
+
+  /** Total USD over each PR's completed runs (PR list COST column; `RunCostsPort`). */
+  costByPull(prIds: string[]): Promise<Map<string, number>> {
+    return runRepo.costByPull(this.db, prIds);
+  }
+
   /** Reviews for a PR (newest first), each with its findings. */
   reviewsForPull(prId: string): Promise<{ review: ReviewRow; findings: FindingRow[] }[]> {
     return reviewRepo.reviewsForPull(this.db, prId);

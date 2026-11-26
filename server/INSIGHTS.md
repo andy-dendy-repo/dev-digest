@@ -28,6 +28,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-26 — Tests are never type-checked.** Type-check new test files with a temporary `tsconfig` in `server/` that extends `tsconfig.json` and includes your test file, because `pnpm typecheck` includes only `src/**/*.ts`, Vitest strips types, and `test/` already has 15 latent TS errors (so including all of `test/` fails). (`server/tsconfig.json`)
 - **2026-11-26 — Supersedes "Tests are never type-checked" (2026-11-26):** `test/` now has 0 type errors; run `pnpm exec tsc --noEmit -p tsconfig.test.json` (src + test). CI `server-unit` runs it, so no temporary tsconfig is needed. (`server/tsconfig.test.json`)
 - **2026-11-27 — drizzle-orm 0.45 wraps driver errors: `err.message` is `Failed query: <sql>\nparams: <all params>`.** The Postgres message is on `err.cause`. Don't persist or show `err.message` of a failed write as-is: `run-executor` stores it in `agent_runs.error`, so a failed trace write saves the whole prompt/trace JSON there. (`server/src/modules/reviews/run-executor.ts`)
+- **2026-11-27 — Batched upsert in drizzle-orm 0.45: `onConflictDoUpdate({ set: { col: sql`excluded.<snake_col>` } })`, and dedupe the conflict key first.** A literal in `set` would write the same value to every row; a key repeated in one `values([...])` fails with `ON CONFLICT DO UPDATE command cannot affect row a second time`. (`server/src/modules/pulls/repository.ts`, `server/src/modules/settings/repository.ts`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -43,6 +44,8 @@ Added `FindingBrief` and `PrMeta.latest_findings` (both `vendor/shared` copies);
 Failed jobs no longer crash the API (`done` gets a handler), Octokit failures become `ExternalServiceError` (502) after retries, the generic 500 branch hides unexpected messages, polling stores `openedAt`. Test types fixed + CI runs `tsconfig.test.json` and the layer check. Next: phase 2 (UnitOfWork, ports) from the plan.
 ### 2026-11-27 — B1: transactions + indexes
 `DrizzleUnitOfWork` + `DbOrTx`; atomic review persistence (`reviewsUow`), agent insert/update (row lock)/`setSkills`, `deleteAgentRun`, PR detail replace, full reindex (graph built before the tx). Migration 0011 adds FK/lookup indexes. 7 atomicity IT tests, all red on the old code.
+### 2026-11-27 — B2: pulls, polling, workspace, settings behind ports
+`PullsService` (+ `PullsPort`, `ReviewSummaryPort`/`RunCostsPort` on the reviews repository) also serves `POST /repos/:id/poll`; `SettingsService` + `ConnectionTester` (`adapters/connection-tester.ts`), `WorkspaceService` over `ReposPort`; routes are parse → service → return. Layer baseline 58 → 45.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
