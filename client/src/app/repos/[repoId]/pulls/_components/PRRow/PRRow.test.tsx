@@ -49,18 +49,18 @@ function renderRow(p: PrMeta) {
 describe("PRRow — COST column", () => {
   it("shows the PR's total cost with ≥ 3 decimals", () => {
     renderRow(pr({ cost_usd: 0.0123 }));
-    expect(screen.getByTestId("run-cost")).toHaveTextContent(/^\$0\.012$/);
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent(/^\$0\.012$/);
   });
 
   it("shows '—' (not $0.00) when the PR has no costed run", () => {
     renderRow(pr({ cost_usd: null, score: null }));
-    expect(screen.getByTestId("run-cost")).toHaveTextContent(/^—$/);
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent(/^—$/);
   });
 
   it("treats a missing field (older API) as no data", () => {
     const { cost_usd: _omit, ...legacy } = pr({});
     renderRow(legacy as PrMeta);
-    expect(screen.getByTestId("run-cost")).toHaveTextContent(/^—$/);
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent(/^—$/);
   });
 });
 

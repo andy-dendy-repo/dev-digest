@@ -22,6 +22,9 @@ interface ToastApi {
 
 const ToastCtx = React.createContext<ToastApi | null>(null);
 
+/** How long a toast stays before it dismisses itself. */
+export const TOAST_TTL_MS = 4000;
+
 export function useToast(): ToastApi {
   const ctx = React.useContext(ToastCtx);
   if (!ctx) throw new Error("useToast must be used within <ToastProvider>");
@@ -78,12 +81,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const t = useTranslations("common");
   const [items, setItems] = React.useState<Toast[]>([]);
   const seq = React.useRef(1);
+  const timers = React.useRef(new Set<ReturnType<typeof setTimeout>>());
+
+  // Auto-dismiss timers must not fire into an unmounted provider.
+  React.useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const id of pending) clearTimeout(id);
+      pending.clear();
+    };
+  }, []);
 
   const push = React.useCallback((message: string, kind: ToastKind = "info") => {
     const id = seq.current++;
     setItems((prev) => [...prev, { id, kind, message }]);
     // auto-dismiss after 4s
-    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 4000);
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      setItems((prev) => prev.filter((t) => t.id !== id));
+    }, TOAST_TTL_MS);
+    timers.current.add(timer);
   }, []);
 
   const api = React.useMemo<ToastApi>(

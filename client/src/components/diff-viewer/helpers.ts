@@ -8,6 +8,24 @@ export interface Line {
   newNo?: number;
 }
 
+/**
+ * Stable React key for a diff line, from its position in the file (not its
+ * index), so a line's hover / open composer stays with that line when the
+ * patch is refetched.
+ */
+export function lineReactKey(ln: Line): string {
+  switch (ln.kind) {
+    case "hunk":
+      return `h:${ln.text}`;
+    case "add":
+      return `a:${ln.newNo}`;
+    case "del":
+      return `d:${ln.oldNo}`;
+    default:
+      return `c:${ln.oldNo}:${ln.newNo}`;
+  }
+}
+
 /** Parse unified-diff patch text into renderable lines with old/new line numbers. */
 export function parsePatch(patch: string | null | undefined): Line[] {
   if (!patch) return [];

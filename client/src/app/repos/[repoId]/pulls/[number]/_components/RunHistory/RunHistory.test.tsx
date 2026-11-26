@@ -75,12 +75,12 @@ describe("RunHistory — outcome badge", () => {
 describe("RunHistory — run cost badge (M1)", () => {
   it("a done run shows total tokens · cost", () => {
     renderRuns([run({ status: "done", tokens_in: 9000, tokens_out: 119, cost_usd: 0.0013 })]);
-    expect(screen.getByTestId("run-cost")).toHaveTextContent("9,119 tok · $0.0013");
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent("9,119 tok · $0.0013");
   });
 
   it("a done run without a known cost shows '—', never $0.00", () => {
     renderRuns([run({ status: "done", cost_usd: null })]);
-    expect(screen.getByTestId("run-cost")).toHaveTextContent(/^—$/);
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent(/^—$/);
   });
 
   it("running / failed runs show no price at all", () => {

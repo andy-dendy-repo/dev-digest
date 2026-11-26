@@ -17,33 +17,35 @@ import { VERDICT_COLOR, VERDICT_COLOR_FALLBACK } from "./constants";
 import { countBlockers, formatWhen } from "./helpers";
 import { s } from "./styles";
 
+/** Imperative handle: the Timeline "jump to findings" click reveals a run. */
+export interface ReviewRunAccordionHandle {
+  /** Open the accordion and scroll it into view. */
+  reveal: () => void;
+}
+
 export function ReviewRunAccordion({
   review,
   run,
   defaultOpen = false,
-  targetRunId = null,
-  targetNonce = 0,
+  ref,
 }: {
   review: ReviewRecord;
   /** The agent run that produced this review (cost/tokens for the banner). */
   run?: RunSummary;
   defaultOpen?: boolean;
-  /** When this matches review.run_id, the accordion opens and scrolls into view
-   *  (driven from the Timeline: clicking an agent name navigates here). */
-  targetRunId?: string | null;
-  targetNonce?: number;
+  ref?: React.Ref<ReviewRunAccordionHandle>;
 }) {
   const t = useTranslations("prReview");
   const { prId } = usePrContext();
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  React.useEffect(() => {
-    if (review.run_id && review.run_id === targetRunId) {
+  React.useImperativeHandle(ref, () => ({
+    reveal: () => {
       setOpen(true);
       rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetRunId, targetNonce, review.run_id]);
+    },
+  }));
+  const toggle = () => setOpen((o) => !o);
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = countBlockers(findings);
@@ -51,35 +53,41 @@ export function ReviewRunAccordion({
 
   return (
     <div ref={rootRef} id={review.run_id ? `review-run-${review.run_id}` : undefined} style={s.root}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setOpen((o) => !o);
-        }}
-        style={s.header}
-      >
-        <Icon.Cpu size={15} style={s.mutedIcon} />
-        <span style={s.agentName}>{review.agent_name ?? t("agentFallback")}</span>
-        {review.verdict && (
-          <Badge color={verdictColor} bg="transparent">
-            {t(`accordion.verdict.${review.verdict}`)}
-          </Badge>
-        )}
-        <span style={s.counts}>
-          {t("accordion.counts", { findings: findings.length, blockers })}
-        </span>
-        <span style={s.spacer} />
-        {review.score != null && (
-          <Badge mono color="var(--text-secondary)">
-            {review.score}
-          </Badge>
-        )}
-        <span className="mono" style={s.when}>
-          {formatWhen(review.created_at)}
-        </span>
+      {/* The whole header row toggles on click; the real (keyboard / screen
+          reader) control is the toggle button. The delete button is its sibling,
+          not its child, so its own clicks and key presses never toggle. */}
+      <div onClick={toggle} style={s.header}>
         <button
+          type="button"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
+          style={s.toggle}
+        >
+          <Icon.Cpu size={15} style={s.mutedIcon} />
+          <span style={s.agentName}>{review.agent_name ?? t("agentFallback")}</span>
+          {review.verdict && (
+            <Badge color={verdictColor} bg="transparent">
+              {t(`accordion.verdict.${review.verdict}`)}
+            </Badge>
+          )}
+          <span style={s.counts}>
+            {t("accordion.counts", { findings: findings.length, blockers })}
+          </span>
+          <span style={s.spacer} />
+          {review.score != null && (
+            <Badge mono color="var(--text-secondary)">
+              {review.score}
+            </Badge>
+          )}
+          <span className="mono" style={s.when}>
+            {formatWhen(review.created_at)}
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             if (window.confirm(t("accordion.confirmDelete", { agent: review.agent_name ?? t("accordion.agentGeneric") }))) {
@@ -93,7 +101,7 @@ export function ReviewRunAccordion({
         >
           <Icon.Trash size={14} style={del.isPending ? s.spin : undefined} />
         </button>
-        <Icon.ChevronDown size={16} style={s.chevron(open)} />
+        <Icon.ChevronDown size={16} style={s.chevron(open)} aria-hidden />
       </div>
 
       {open && (

@@ -9,7 +9,9 @@ vi.mock("@/lib/hooks/reviews", () => ({
   useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-import { ReviewRunAccordion } from "./ReviewRunAccordion";
+import React from "react";
+import { act } from "@testing-library/react";
+import { ReviewRunAccordion, type ReviewRunAccordionHandle } from "./ReviewRunAccordion";
 import { PrProvider } from "../pr-context";
 
 const REVIEW = review({
@@ -90,10 +92,33 @@ describe("ReviewRunAccordion", () => {
     expect(screen.queryByText("No rate limiting")).not.toBeInTheDocument();
   });
 
-  it("opens and scrolls into view when the timeline targets its run", () => {
+  it("pressing Enter on the delete button does not also toggle the accordion", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { user } = renderAccordion();
+    screen.getByRole("button", { name: "Delete this review run" }).focus();
+
+    await user.keyboard("{Enter}");
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("No rate limiting")).not.toBeInTheDocument();
+  });
+
+  it("exposes its header as a real, labelled toggle button", async () => {
+    const { user } = renderAccordion();
+    const toggle = screen.getByRole("button", { expanded: false });
+    expect(toggle).toHaveAccessibleName(/Security Reviewer/);
+    await user.click(toggle);
+    expect(screen.getByRole("button", { expanded: true })).toBe(toggle);
+  });
+
+  it("opens and scrolls into view when revealed through its handle", () => {
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
-    renderAccordion({ targetRunId: "run-rv1", targetNonce: 1 });
+    const handle = React.createRef<ReviewRunAccordionHandle>();
+    renderAccordion({ ref: handle });
+
+    act(() => handle.current?.reveal());
+
     expect(screen.getByText("No rate limiting")).toBeInTheDocument();
     expect(scroll).toHaveBeenCalled();
   });
