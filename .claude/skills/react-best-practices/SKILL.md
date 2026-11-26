@@ -21,10 +21,9 @@ Each rule is tagged with a severity for use by consuming agents:
 
 - Components must be pure — same inputs = same outputs, no side effects during render
 - Business logic in hooks/helpers, NOT in component bodies
-- Container components fetch data; presentational components receive props and render UI
+- Data fetching and stateful logic go in custom hooks; don't split into container/presentational components (its author withdrew the pattern in 2019, see `frontend-ui-architecture`)
 - Helper functions extracted OUTSIDE the component body
-- Max 200 lines per component — split if larger
-- Max 5-7 props — more suggests the component does too much
+- Split on concrete signals (more than one concern, reuse, tangled state, hard to test), not line count. ~200 lines or 7+ props is a prompt to look, not a rule
 - One component per file (small colocated internal helpers are fine)
 
 ### Composition Patterns
@@ -109,7 +108,7 @@ New arrays, objects, and functions created inline in JSX props break `React.memo
 
 - ALL data fetching in custom hooks, never in component bodies
 - Use the project's `useApiQuery`/`useApiMutation` core hooks
-- Handle loading, error, and empty states in the container component
+- Handle loading, error, and empty states in the component that calls the query hook
 - Use try-catch in async functions within hooks
 
 ## Tailwind CSS (MEDIUM)
@@ -166,9 +165,9 @@ New arrays, objects, and functions created inline in JSX props break `React.memo
 
 ## Code Organization (MEDIUM)
 
-### Feature-Based Structure
-- Colocate component + hook + helpers + tests per feature
-- Shared utilities go in `utils/` or `components/ui/`
+Where files, constants, helpers, hooks and queries go is covered by the
+[`frontend-ui-architecture`](../frontend-ui-architecture/SKILL.md) skill. Follow it for any
+placement or import question.
 
 ### File Quality
 - Order: imports, constants, helpers, component, exports

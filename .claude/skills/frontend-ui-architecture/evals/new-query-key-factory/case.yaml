@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: new-query-key-factory
+expected_outcome: |
+  A new domain file client/src/lib/hooks/evals.ts (or the matching existing domain file) defining a query-key factory and queryOptions, a useQuery hook built on them, and a mutation that invalidates via the factory key; built on lib/api.ts, types from @devdigest/shared, nothing added to a global queryKeys file.
