@@ -4,7 +4,6 @@ import React from "react";
 import { SectionLabel, Button } from "@devdigest/ui";
 import { DiffViewer, type DiffCommentApi } from "@/components/diff-viewer";
 import { usePrComments, useCreatePrComment } from "@/lib/hooks/reviews";
-import { notify } from "@/lib/toast";
 import type { PrFile } from "@devdigest/shared";
 
 interface DiffTabProps {
@@ -29,14 +28,11 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
     showComments,
     posting: create.isPending,
     onSubmit: async (input) => {
-      try {
-        const res = await create.mutateAsync(input);
-        setShowComments(true); // a just-posted comment shouldn't stay hidden
-        return res;
-      } catch (err) {
-        notify.error(err instanceof Error ? err.message : "Couldn't post the comment to GitHub.");
-        throw err;
-      }
+      // A failure is toasted once by the global MutationCache handler and
+      // rethrown to the composer so it keeps the draft.
+      const res = await create.mutateAsync(input);
+      setShowComments(true); // a just-posted comment shouldn't stay hidden
+      return res;
     },
   };
 

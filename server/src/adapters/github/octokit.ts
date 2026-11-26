@@ -13,6 +13,7 @@ import type {
   IssueMeta,
 } from '@devdigest/shared';
 import { withRetry, withTimeout } from '../../platform/resilience.js';
+import { translateGitHubError } from './errors.js';
 
 const TIMEOUT = 30_000;
 
@@ -33,8 +34,13 @@ export class OctokitGitHubClient implements GitHubClient {
     this.octokit = new Octokit({ auth: token });
   }
 
+  /** Retry transient failures, then translate whatever is left (see errors.ts). */
+  private call<T>(fn: () => Promise<T>): Promise<T> {
+    return withRetry(fn).catch(translateGitHubError);
+  }
+
   async listPullRequests(repo: RepoRef): Promise<PrMeta[]> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           // Fetch open + recently merged/closed (most-recently-updated first) so
@@ -68,7 +74,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async getPullRequest(repo: RepoRef, n: number): Promise<PrDetail> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const { data: pr } = await this.octokit.rest.pulls.get({
@@ -139,7 +145,7 @@ export class OctokitGitHubClient implements GitHubClient {
     n: number,
     review: GitHubReviewPayload,
   ): Promise<{ id: string }> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const res = await this.octokit.rest.pulls.createReview({
@@ -191,7 +197,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async listReviewComments(repo: RepoRef, n: number): Promise<PrReviewComment[]> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const res = await this.octokit.rest.pulls.listReviewComments({
@@ -212,7 +218,7 @@ export class OctokitGitHubClient implements GitHubClient {
     n: number,
     input: CreateReviewCommentInput,
   ): Promise<PrReviewComment> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           if (input.inReplyTo != null) {
@@ -243,7 +249,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async openPullRequest(repo: RepoRef, payload: OpenPrPayload): Promise<{ url: string }> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const res = await this.octokit.rest.pulls.create({
@@ -265,7 +271,7 @@ export class OctokitGitHubClient implements GitHubClient {
     repo: RepoRef,
     payload: CommitFilesPayload,
   ): Promise<{ branch: string }> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const owner = repo.owner;
@@ -330,7 +336,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async findOpenPr(repo: RepoRef, branch: string): Promise<{ url: string } | null> {
-    return withRetry(() =>
+    return this.call(() =>
       withTimeout(
         (async () => {
           const res = await this.octokit.rest.pulls.list({
@@ -349,7 +355,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async getIssue(repo: RepoRef, n: number): Promise<IssueMeta> {
-    const res = await withRetry(() =>
+    const res = await this.call(() =>
       withTimeout(
         this.octokit.rest.issues.get({ owner: repo.owner, repo: repo.name, issue_number: n }),
         TIMEOUT,
@@ -364,7 +370,7 @@ export class OctokitGitHubClient implements GitHubClient {
   }
 
   async currentLogin(): Promise<string> {
-    const res = await withRetry(() =>
+    const res = await this.call(() =>
       withTimeout(this.octokit.rest.users.getAuthenticated(), TIMEOUT),
     );
     return res.data.login;

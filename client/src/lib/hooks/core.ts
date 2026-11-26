@@ -76,6 +76,8 @@ export function useAddRepo() {
   return useMutation({
     mutationFn: (url: string) => api.post<Repo>("/repos", { url }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["repos"] }),
+    // AddRepoView shows the failure inline next to the URL field (form error).
+    meta: { errorToast: false },
   });
 }
 

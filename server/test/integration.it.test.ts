@@ -144,4 +144,25 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     expect(poll.json().synced).toBeGreaterThan(0);
     await app.close();
   });
+
+  it('POST /repos/:id/poll stores opened_at for newly discovered PRs (parity with GET pulls)', async () => {
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: { git: new MockGitClient(), github: new MockGitHubClient() },
+    });
+    const { db } = pg.handle;
+    const [ws] = await db.select().from(t.workspaces).limit(1);
+    const [repo] = await db
+      .insert(t.repos)
+      .values({ workspaceId: ws!.id, owner: 'poll', name: 'fresh', fullName: 'poll/fresh' })
+      .returning();
+    const poll = await app.inject({ method: 'POST', url: `/repos/${repo!.id}/poll` });
+    expect(poll.statusCode).toBe(200);
+    const rows = await db.select().from(t.pullRequests).where(eq(t.pullRequests.repoId, repo!.id));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.openedAt).not.toBeNull();
+    await app.close();
+  });
 });

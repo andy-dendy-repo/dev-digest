@@ -143,3 +143,54 @@ describe("FindingsPanel", () => {
     expect(screen.getByText(/^dismissed$/i)).toBeInTheDocument();
   });
 });
+
+describe("FindingsPanel — keyboard shortcuts", () => {
+  const ONE = [finding("p1-f", "CRITICAL", "Panel one finding", 0.95)];
+  const TWO = [finding("p2-f", "WARNING", "Panel two finding", 0.95)];
+
+  function twoPanels() {
+    return render(
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <div data-testid="panel-one">
+          <FindingsPanel findings={ONE} prId="pr1" />
+        </div>
+        <div data-testid="panel-two">
+          <FindingsPanel findings={TWO} prId="pr1" />
+        </div>
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it("`a` accepts the focused finding", async () => {
+    const user = userEvent.setup();
+    render(ui(FINDINGS));
+    await user.keyboard("a");
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate).toHaveBeenCalledWith({ findingId: "c1", action: "accept", prId: "pr1" });
+  });
+
+  it("acts in ONE panel only when several are open (the most recently opened)", async () => {
+    const user = userEvent.setup();
+    twoPanels();
+    await user.keyboard("d");
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate).toHaveBeenCalledWith({ findingId: "p2-f", action: "dismiss", prId: "pr1" });
+  });
+
+  it("moves the shortcuts to the panel the user last interacted with", async () => {
+    const user = userEvent.setup();
+    twoPanels();
+    await user.click(screen.getByText("Panel one finding"));
+    mutate.mockClear();
+    await user.keyboard("a");
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate).toHaveBeenCalledWith({ findingId: "p1-f", action: "accept", prId: "pr1" });
+  });
+
+  it("ignores browser chords such as Cmd/Ctrl+A and Ctrl+D", async () => {
+    const user = userEvent.setup();
+    render(ui(FINDINGS));
+    await user.keyboard("{Meta>}a{/Meta}{Control>}a{/Control}{Control>}d{/Control}{Alt>}d{/Alt}");
+    expect(mutate).not.toHaveBeenCalled();
+  });
+});

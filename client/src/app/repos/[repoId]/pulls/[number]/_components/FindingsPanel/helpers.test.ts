@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import { visibleFindings } from "./helpers";
+import { isPlainShortcut, visibleFindings } from "./helpers";
 
 function finding(id: string, severity: Severity, confidence: number): FindingRecord {
   return {
@@ -39,5 +39,27 @@ describe("visibleFindings", () => {
     expect(visibleFindings(FINDINGS, false, "WARNING").map((f) => f.id)).toEqual(["w1", "w2"]);
     expect(visibleFindings(FINDINGS, false, "CRITICAL").map((f) => f.id)).toEqual(["c-low"]);
     expect(visibleFindings(FINDINGS, true, "CRITICAL")).toEqual([]);
+  });
+});
+
+describe("isPlainShortcut", () => {
+  const key = (over: Partial<KeyboardEvent> = {}, target: Partial<HTMLElement> = { tagName: "DIV" }) =>
+    ({ metaKey: false, ctrlKey: false, altKey: false, target, ...over }) as KeyboardEvent;
+
+  it("accepts a bare key outside form fields", () => {
+    expect(isPlainShortcut(key())).toBe(true);
+  });
+
+  it("rejects modifier chords", () => {
+    expect(isPlainShortcut(key({ metaKey: true }))).toBe(false);
+    expect(isPlainShortcut(key({ ctrlKey: true }))).toBe(false);
+    expect(isPlainShortcut(key({ altKey: true }))).toBe(false);
+  });
+
+  it("rejects typing in inputs, selects and editors", () => {
+    expect(isPlainShortcut(key({}, { tagName: "INPUT" }))).toBe(false);
+    expect(isPlainShortcut(key({}, { tagName: "TEXTAREA" }))).toBe(false);
+    expect(isPlainShortcut(key({}, { tagName: "SELECT" }))).toBe(false);
+    expect(isPlainShortcut(key({}, { tagName: "DIV", isContentEditable: true }))).toBe(false);
   });
 });
