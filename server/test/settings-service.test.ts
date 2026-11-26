@@ -127,6 +127,7 @@ describe('WorkspaceService.summary', () => {
       defaultBranch: 'main',
       clonePath: null,
       lastPolledAt: new Date('2026-01-01T00:00:00Z'),
+      createdBy: null,
       createdAt: new Date(),
     };
     const service = new WorkspaceService({ repos: { list: async () => [repo] }, cloneDir: '/clones' });

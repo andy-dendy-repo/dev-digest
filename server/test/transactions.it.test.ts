@@ -189,8 +189,7 @@ d('transactions: multi-write flows are atomic (Testcontainers pg)', () => {
     const versions = await repo.listVersions(agent.id);
     expect(versions.map((v) => v.version)).toEqual([5, 4, 3, 2, 1]);
     // The newest snapshot is the config the agent row actually holds.
-    const newest = versions[0]!.configJson as { system_prompt: string };
-    expect(newest.system_prompt).toBe(after!.systemPrompt);
+    expect(versions[0]!.config.system_prompt).toBe(after!.system_prompt);
   });
 
   it('agent insert: a failing v1 snapshot leaves no agent behind', async () => {

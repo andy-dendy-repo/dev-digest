@@ -2,6 +2,7 @@ import PQueue from 'p-queue';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import * as t from '../db/schema.js';
+import type { EnqueuedJob, JobHandler, JobQueue } from '@devdigest/shared';
 import { withTimeout, withRetry } from './resilience.js';
 
 /**
@@ -13,7 +14,7 @@ import { withTimeout, withRetry } from './resilience.js';
  * the handler on the queue, and updates status/attempts/error as it runs.
  */
 
-export type JobHandler = (payload: unknown, ctx: { jobId: string }) => Promise<void>;
+export type { EnqueuedJob, JobHandler };
 
 export interface JobRunnerOptions {
   concurrency?: number;
@@ -21,13 +22,7 @@ export interface JobRunnerOptions {
   retries?: number;
 }
 
-export interface EnqueuedJob {
-  id: string;
-  /** Resolves when the job finishes (or rejects if it ultimately fails). */
-  done: Promise<void>;
-}
-
-export class JobRunner {
+export class JobRunner implements JobQueue {
   private queue: PQueue;
   private handlers = new Map<string, JobHandler>();
   private timeoutMs: number;

@@ -1,6 +1,6 @@
 # onion-architecture
 
-**Version:** 1.2.2 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
+**Version:** 1.2.3 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
 
 This skill says which ring each backend file belongs to, which way imports may point, and
 where ports, repositories, adapters and Zod parsing live. It also ships a dependency-cruiser
@@ -45,3 +45,4 @@ is for, how to maintain the skill, and its version history.
 | 1.2.0 | 2026-11-26 | The layer check and `tsconfig.test.json` (tests type-check, 0 errors) run in CI `server-unit`; the client `vendor/shared` copy is synced and CI keeps it identical, so ports are added to the server copy and synced |
 | 1.2.1 | 2026-11-27 | `references/drizzle.md` transactions section matches the real code: per-module `UnitOfWork` port, generic `DrizzleUnitOfWork`, `DbOrTx`, repository-local transactions for its own aggregate |
 | 1.2.2 | 2026-11-27 | Baseline 58 → 45 after the pulls/polling/workspace/settings refactor (B2); `examples.md` §1 marked as fixed (its "after" is now the real code); SKILL.md debt example updated |
+| 1.2.3 | 2026-11-27 | Baseline 45 → 36 after the agents/repos refactor (B3); `adapters-di.md` lists the new ports, the `JobQueue` port and composition-root job registration; `examples.md` §2 marked as fixed |

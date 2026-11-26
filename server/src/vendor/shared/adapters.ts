@@ -286,3 +286,23 @@ export interface SecretsProvider {
    */
   set?(key: SecretKey, value: string): Promise<void>;
 }
+
+// ---------- Background jobs (MVP = Postgres-backed JobRunner) ----------
+/** Runs one job; `payload` is whatever was enqueued (the handler validates it). */
+export type JobHandler = (payload: unknown, ctx: { jobId: string }) => Promise<void>;
+
+export interface EnqueuedJob {
+  id: string;
+  /** Resolves when the job finishes (or rejects if it ultimately fails). */
+  done: Promise<void>;
+}
+
+/**
+ * Queue of background work (clone, indexing, ...) by kind. Handlers are
+ * registered once in the composition root; `enqueue` throws when no handler
+ * is registered for `kind`.
+ */
+export interface JobQueue {
+  register(kind: string, handler: JobHandler): void;
+  enqueue(workspaceId: string, kind: string, payload: unknown): Promise<EnqueuedJob>;
+}

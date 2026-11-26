@@ -1,15 +1,39 @@
 import type { Agent, AgentVersion, CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
 import { AgentVersionConfig } from '@devdigest/shared';
-import type { AgentRow, AgentVersionRow } from './repository.js';
 
 /**
- * Pure helpers for the agents module — DB row ⇄ DTO mapping and the
- * config-version-bump rule. No I/O; behaviour-identical to the previous inline
- * implementations.
+ * Pure helpers for the agents module — stored-agent → DTO mapping and the
+ * config-version-bump rule. No I/O. The input shapes are declared here
+ * structurally, so this file never imports the repository (the repository
+ * imports it to map its rows).
  */
 
-/** Map a persisted agent row to the public `Agent` DTO. */
-export function toAgentDto(row: AgentRow): Agent {
+/** An agent as stored (camelCase columns of `agents`). */
+export interface StoredAgent {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  model: string;
+  systemPrompt: string;
+  outputSchema: unknown;
+  enabled: boolean;
+  version: number;
+  strategy: string;
+  ciFailOn: string;
+  repoIntel: boolean;
+}
+
+/** A stored `agent_versions` snapshot. */
+export interface StoredAgentVersion {
+  agentId: string;
+  version: number;
+  configJson: unknown;
+  createdAt: Date;
+}
+
+/** Map a stored agent to the public `Agent` DTO. */
+export function toAgentDto(row: StoredAgent): Agent {
   return {
     id: row.id,
     name: row.name,
@@ -32,7 +56,7 @@ export function toAgentDto(row: AgentRow): Agent {
  * could drift), so it is parsed through `AgentVersionConfig` — a malformed
  * snapshot throws here rather than leaking an unvalidated blob to the client.
  */
-export function toAgentVersionDto(row: AgentVersionRow): AgentVersion {
+export function toAgentVersionDto(row: StoredAgentVersion): AgentVersion {
   return {
     agent_id: row.agentId,
     version: row.version,
@@ -60,7 +84,7 @@ export interface ConfigChangePatch {
  */
 export function isConfigChange(
   existing: Pick<
-    AgentRow,
+    StoredAgent,
     | 'name'
     | 'description'
     | 'provider'

@@ -68,7 +68,8 @@ exposed through the container. `pulls` no longer imports a file under `reviews/`
 
 ## 2. Service takes the whole container (`core-no-container`)
 
-**Before:** `server/src/modules/agents/service.ts`
+**Before:** `server/src/modules/agents/service.ts` (fixed in the B3 refactor; `agents/` and
+`repos/` now have this shape)
 
 ```ts
 import type { Container } from '../../platform/container.js';

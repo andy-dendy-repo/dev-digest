@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
+import { Provider } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
 import { AgentsService } from './service.js';
+import { CreateAgentBody, UpdateAgentBody } from './domain.js';
 
 /** `/providers/:id` addresses a provider by name, not a uuid. */
 const ProviderParams = z.object({ id: Provider });
@@ -30,32 +31,6 @@ const VersionParams = z.object({
  *   GET    /providers/:id/models    → dynamic model list for a provider (editor)
  */
 
-const CreateAgentBody = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  provider: Provider,
-  model: z.string().min(1),
-  system_prompt: z.string().min(1),
-  output_schema: z.unknown().optional(),
-  strategy: ReviewStrategy.optional(),
-  ci_fail_on: CiFailOn.optional(),
-  repo_intel: z.boolean().optional(),
-  enabled: z.boolean().optional(),
-});
-
-const UpdateAgentBody = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().optional(),
-  provider: Provider.optional(),
-  model: z.string().min(1).optional(),
-  system_prompt: z.string().min(1).optional(),
-  output_schema: z.unknown().optional(),
-  strategy: ReviewStrategy.optional(),
-  ci_fail_on: CiFailOn.optional(),
-  repo_intel: z.boolean().optional(),
-  enabled: z.boolean().optional(),
-});
-
 /** Either set the whole ordered set (`skill_ids`) or link one (`skill_id`). */
 const SetSkillsBody = z
   .object({
@@ -69,7 +44,11 @@ const SetSkillsBody = z
 
 export default async function agentsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
-  const service = new AgentsService(app.container);
+  const { container } = app;
+  const service = new AgentsService({
+    agents: container.agentsRepo,
+    llm: (id) => container.llm(id),
+  });
 
   app.get('/agents', async (req) => {
     const { workspaceId } = await getContext(app.container, req);
@@ -85,23 +64,7 @@ export default async function agentsRoutes(appBase: FastifyInstance) {
 
   app.post('/agents', { schema: { body: CreateAgentBody } }, async (req, reply) => {
     const { workspaceId, userId } = await getContext(app.container, req);
-    const body = req.body;
-    const agent = await service.create(
-      workspaceId,
-      {
-        name: body.name,
-        provider: body.provider,
-        model: body.model,
-        system_prompt: body.system_prompt,
-        ...(body.description !== undefined ? { description: body.description } : {}),
-        ...(body.output_schema !== undefined ? { output_schema: body.output_schema } : {}),
-        ...(body.strategy !== undefined ? { strategy: body.strategy } : {}),
-        ...(body.ci_fail_on !== undefined ? { ci_fail_on: body.ci_fail_on } : {}),
-        ...(body.repo_intel !== undefined ? { repo_intel: body.repo_intel } : {}),
-        ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
-      },
-      userId,
-    );
+    const agent = await service.create(workspaceId, req.body, userId);
     reply.status(201);
     return agent;
   });
