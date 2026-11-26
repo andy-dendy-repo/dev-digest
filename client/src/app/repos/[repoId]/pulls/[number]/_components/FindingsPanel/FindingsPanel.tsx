@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Toggle, EmptyState } from "@devdigest/ui";
 import type { FindingActionKind, FindingRecord, Severity } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
-import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
+import { useFindingAction } from "@/lib/hooks/reviews";
 import { countBySeverity } from "@/lib/findings-severity";
 import { confidentFindings, visibleFindings } from "./helpers";
 import { SeverityFilter } from "./SeverityFilter";
