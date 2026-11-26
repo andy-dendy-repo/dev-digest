@@ -93,7 +93,7 @@
       "type": "tsc",
       "include": ["server/**/*.ts", "reviewer-core/src/**/*.ts"],
       "cwd": "server",
-      "command": "pnpm exec tsc --noEmit -p tsconfig.test.json",
+      "command": "if [ -f tsconfig.test.json ]; then pnpm exec tsc --noEmit -p tsconfig.test.json; else pnpm exec tsc --noEmit -p tsconfig.json; fi",
       "requires": ["server/node_modules"],
       "install": "pnpm install (server/)",
       "severity": "critical"

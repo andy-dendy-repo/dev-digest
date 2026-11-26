@@ -13,6 +13,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 <!-- Dead ends and antipatterns — always with WHY. Most-skipped, most valuable. -->
 - **2026-11-26 — Client-only tasks drift into `server/` and contracts.** Avoid letting an agent fill a missing API field by editing `server/` + both `vendor/shared` copies during a client task, because a no-skill eval run did exactly that for a UI chip; the skill now says to make the prop optional and report the field. (`.claude/skills/frontend-ui-architecture/SKILL.md`)
 - **2026-11-26 — Symlinking `node_modules` into a git worktree is not ignored.** Remove a `server/node_modules` / `reviewer-core/node_modules` symlink before `git add` in a `.claude/worktrees/*` checkout, because `.gitignore`'s `node_modules/` (trailing slash) matches directories only, so the symlink shows as untracked and `git add -A` would commit it. (`.gitignore`)
+- **2026-11-27 — `server/tsconfig.test.json` is not on `main` yet.** Fall back to `tsc --noEmit -p tsconfig.json` in any script that type-checks `server/` from a branch cut off `main`, because `-p tsconfig.test.json` fails there with `TS5058: The specified path does not exist`. (`.claude/skills/pr-self-review/skill-map.json`)
 
 ## Codebase Patterns
 <!-- Non-default conventions and architecture decisions. -->
@@ -23,6 +24,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-26 — skill-creator scripts need Python ≥ 3.10.** `generate_review.py` fails with `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'` under `/usr/bin/python3` (3.9.6); run it with `/opt/homebrew/bin/python3` (3.14). Version a skill under `metadata.version`, because `quick_validate.py` rejects unknown top-level frontmatter keys. (skill-creator `eval-viewer/generate_review.py`)
 - **2026-11-26 — dependency-cruiser 17 under pnpm needs `preserveSymlinks: true` for a stable baseline.** Keep it set in the onion layer-check config, because otherwise packages resolve to `node_modules/.pnpm/<pkg>@<ver>/…` and every version bump invalidates `known-violations.json`. (`.claude/skills/onion-architecture/assets/depcruise.cjs`)
 - **2026-11-26 — dependency-cruiser path rules only see resolved package paths.** Keep the `resolvable` (`couldNotResolve`) rule and run the layer check only with deps installed, because without `node_modules` an import stays a bare `drizzle-orm` and every `node_modules/<pkg>/` rule silently passes. (`.claude/skills/onion-architecture/assets/depcruise.cjs`)
+- **2026-11-27 — dependency-cruiser 17 `err` output is line-less.** Parse `^\s*(error|warn) <rule>: <from> → <to>` and resolve paths against the run directory (`server/`, so reviewer-core shows as `../reviewer-core/src/…`); the exit code equals the error count (53 without the baseline), not 1, and there are no line numbers. (`.claude/skills/pr-self-review/scripts/checks.mjs`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -41,6 +43,10 @@ Researched 40 sources and wrote `.claude/skills/frontend-ui-architecture/` (SKIL
 ### 2026-11-26 — onion-architecture skill
 Added `.claude/skills/onion-architecture/` with rings, per-tool references and a dependency-cruiser layer check. Existing debt (58 violations) is baselined in `assets/known-violations.json`, so the check fails only on new ones. In a skill-creator eval, rule adherence was 100% with the skill and 57% without; the biggest gain was new endpoints, which otherwise copy the Drizzle-in-route debt.
 Not done: layer check in CI, and refactoring the baselined debt.
+
+### 2026-11-27 — pr-self-review skill
+Added `.claude/skills/pr-self-review/` and a project `.claude/settings.json` `PreToolUse` hook that blocks `gh pr create` / `gh pr merge` until a verdict passes for the current diff fingerprint. Tested end-to-end in a throwaway worktree: the layer check, typecheck and real reviewer and verifier subagents caught seeded violations; pass, stale-fingerprint and docs-only paths behave correctly.
+Not done: a GitHub-side gate (status check or CI). The user chose a local-only gate.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

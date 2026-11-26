@@ -81,6 +81,21 @@ function merge() {
       if (f.source === "check") prev.source = "check";
     }
   }
+  // A file-level check finding (line 0, e.g. the layer check) absorbs a skill finding for
+  // the same file and rule, taking the skill's precise line.
+  for (const [key, f] of byKey) {
+    if (f.source === "check") continue;
+    const ruleKey = String(f.rule ?? "").toLowerCase();
+    const check = [...byKey.values()].find(
+      (c) => c.source === "check" && c.line === 0 && c.file === f.file && String(c.rule).toLowerCase() === ruleKey,
+    );
+    if (!check) continue;
+    check.line = f.line;
+    check.skills = [...new Set([...check.skills, ...f.skills])];
+    check.fix = f.fix ?? check.fix;
+    byKey.delete(key);
+  }
+
   const findings = [...byKey.values()]
     .sort((x, y) => rank(x.severity) - rank(y.severity) || String(x.file).localeCompare(String(y.file)) || x.line - y.line)
     .map((f, i) => ({ id: `F${i + 1}`, ...f, needsVerification: f.source === "skill" && f.severity === "critical" && f.introduced }));

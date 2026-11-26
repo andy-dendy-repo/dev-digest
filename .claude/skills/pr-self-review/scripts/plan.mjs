@@ -7,7 +7,7 @@
 //
 // Exit 0: plan written (even when there is nothing to review: see `empty`).
 // Exit 3: coverage guard: a skill in .claude/skills/ is neither mapped nor excluded.
-import { readdirSync, existsSync, rmSync } from "node:fs";
+import { readdirSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { collectDiff, loadMap, matchesAny, runDir, writeJson, SKILL_DIR } from "./lib.mjs";
 
@@ -56,6 +56,7 @@ const checks = map.checks
 
 const dir = runDir(diff.root);
 rmSync(dir, { recursive: true, force: true });
+mkdirSync(join(dir, "findings"), { recursive: true });
 const plan = { createdAt: new Date().toISOString(), ...diff, empty: diff.files.length === 0, routes, unrouted, checks };
 writeJson(join(dir, "plan.json"), plan);
 
