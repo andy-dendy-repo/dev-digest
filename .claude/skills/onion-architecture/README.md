@@ -1,6 +1,6 @@
 # onion-architecture
 
-**Version:** 1.2.3 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
+**Version:** 1.2.4 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
 
 This skill says which ring each backend file belongs to, which way imports may point, and
 where ports, repositories, adapters and Zod parsing live. It also ships a dependency-cruiser
@@ -46,3 +46,4 @@ is for, how to maintain the skill, and its version history.
 | 1.2.1 | 2026-11-27 | `references/drizzle.md` transactions section matches the real code: per-module `UnitOfWork` port, generic `DrizzleUnitOfWork`, `DbOrTx`, repository-local transactions for its own aggregate |
 | 1.2.2 | 2026-11-27 | Baseline 58 → 45 after the pulls/polling/workspace/settings refactor (B2); `examples.md` §1 marked as fixed (its "after" is now the real code); SKILL.md debt example updated |
 | 1.2.3 | 2026-11-27 | Baseline 45 → 36 after the agents/repos refactor (B3); `adapters-di.md` lists the new ports, the `JobQueue` port and composition-root job registration; `examples.md` §2 marked as fixed |
+| 1.2.4 | 2026-11-27 | Baseline 36 → 25 after the reviews refactor (B4): only repo-intel debt is left; `reviewRepo` is port-typed; `parseUnifiedDiff` lives in `reviews/diff.ts`; `examples.md` §3/§4 marked as fixed; `drizzle.md` notes that the unit of work turns a failed query into a `PersistenceError` |

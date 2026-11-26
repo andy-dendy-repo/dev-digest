@@ -35,7 +35,7 @@ import type {
   JobHandler,
   EnqueuedJob,
 } from '@devdigest/shared';
-import { parseUnifiedDiff } from './git/diff-parser.js';
+import { parseUnifiedDiff } from '../modules/reviews/diff.js';
 
 /**
  * Deterministic MOCK adapters for tests/dev — NO real network. Each mirrors the

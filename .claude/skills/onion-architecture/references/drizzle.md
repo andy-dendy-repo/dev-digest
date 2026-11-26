@@ -96,6 +96,10 @@ get reviewsUow(): ReviewsUnitOfWork {
 - Keep slow I/O (LLM, GitHub, parsing, graph building) outside `work`: the
   transaction holds a pooled connection and its row locks until it ends.
 - The in-memory fake `UnitOfWork` for tests just calls `work(fakes)`.
+- `DrizzleUnitOfWork.run` rethrows a failed query (drizzle's `DrizzleQueryError`,
+  whose message is `Failed query: <sql>\nparams: <all params>`) as a
+  `PersistenceError` with a short message and the driver error on `cause`. A use
+  case may store or show `err.message`; log `err.cause` for the details.
 
 ## postgres.js
 

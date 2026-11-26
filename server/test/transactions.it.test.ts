@@ -157,6 +157,9 @@ d('transactions: multi-write flows are atomic (Testcontainers pg)', () => {
 
     expect(run!.status).toBe('failed');
     expect(run!.error).toBeTruthy();
+    // The UI shows `error`: a short message, never drizzle's "Failed query: <sql> params: <trace JSON>".
+    expect(run!.error).not.toMatch(/Failed query|params:|insert into/i);
+    expect(run!.error!.length).toBeLessThan(120);
     const reviews = await pg.handle.db.select().from(t.reviews).where(eq(t.reviews.prId, pr.id));
     expect(reviews).toHaveLength(0);
     const [prAfter] = await pg.handle.db

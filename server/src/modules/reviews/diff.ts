@@ -1,7 +1,8 @@
 import type { UnifiedDiff, DiffHunk } from '@devdigest/shared';
 
 /**
- * Minimal unified-diff parser. Extracts per-file hunks and the set of new-side
+ * Minimal unified-diff parser. Pure (string → structure, no I/O), so it lives
+ * in the reviews core; the git adapter and the pr_files fallback both use it. Extracts per-file hunks and the set of new-side
  * line numbers each hunk covers — exactly what the citation-grounding gate
  * needs (file:line must intersect a real hunk).
  *

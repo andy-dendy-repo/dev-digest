@@ -1,13 +1,11 @@
-import type { Container } from '../../platform/container.js';
 import type { Agent, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
-import * as schema from '../../db/schema.js';
-import type { ReviewRepository, PullRow } from './repository.js';
-import type { Persisted } from './ports.js';
+import { PersistenceError } from '../../platform/errors.js';
+import type { ReviewPull, ReviewRepoRef } from './domain.js';
+import type { Logger, Persisted, ReviewRunExecutorDeps, RunExecutor, RunJob } from './ports.js';
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
-import { loadDiff } from './diff-loader.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -17,13 +15,7 @@ export class RunCancelledError extends Error {
   }
 }
 
-/** Minimal structured logger (pino-compatible: (obj, msg)) for runtime logs. */
-export type Logger = {
-  info: (obj: unknown, msg?: string) => void;
-  warn: (obj: unknown, msg?: string) => void;
-  error: (obj: unknown, msg?: string) => void;
-  debug: (obj: unknown, msg?: string) => void;
-};
+export type { Logger } from './ports.js';
 
 // A reduced "Review per file" — same schema as Review (the model returns a small
 // Review per file; we merge findings + take the worst verdict / mean score).
@@ -41,12 +33,8 @@ export type RunOutcome = {
  * map-reduces each agent, streaming events over the runBus and persisting each
  * review. Per-agent failures are isolated.
  */
-export class ReviewRunExecutor {
-  constructor(
-    private container: Container,
-    private repo: ReviewRepository,
-    private agents: Container['agentsRepo'],
-  ) {}
+export class ReviewRunExecutor implements RunExecutor {
+  constructor(private readonly deps: ReviewRunExecutorDeps) {}
 
   /**
    * Background execution of the queued agent runs (NOT awaited by the route).
@@ -55,16 +43,16 @@ export class ReviewRunExecutor {
    */
   async executeRuns(
     workspaceId: string,
-    pull: PullRow,
-    repo: typeof schema.repos.$inferSelect,
-    jobs: { agent: Agent; runId: string }[],
+    pull: ReviewPull,
+    repo: ReviewRepoRef,
+    jobs: RunJob[],
     logger?: Logger,
   ): Promise<void> {
     // ONE logger fanned out over every queued run: shared pre-work (diff +
     // intent) is streamed into each target agent's Live Log and persisted into
     // each run's trace. Per-agent work below narrows it to a single run.
     const runLog = new RunLogger(
-      this.container.runBus,
+      this.deps.runBus,
       jobs.map((j) => j.runId),
       logger,
       { prId: pull.id },
@@ -75,7 +63,7 @@ export class ReviewRunExecutor {
     // mark the rows failed and persist the buffered log so it survives a reload.
     const failAll = async (msg: string) => {
       for (const { runId, agent } of jobs) {
-        await this.repo
+        await this.deps.runs
           .completeAgentRun(runId, {
             status: 'failed',
             durationMs: 0,
@@ -87,16 +75,16 @@ export class ReviewRunExecutor {
             error: msg,
           })
           .catch(() => undefined);
-        await this.repo
+        await this.deps.runs
           .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed'))
           .catch(() => undefined);
-        this.container.runBus.complete(runId);
+        this.deps.runBus.complete(runId);
       }
     };
 
     let diff: UnifiedDiff;
     try {
-      diff = await runLog.step('Loading PR diff', () => loadDiff(this.container, this.repo, workspaceId, pull, repo), {
+      diff = await runLog.step('Loading PR diff', () => this.deps.diffs.load(pull, repo), {
         kind: 'tool',
       });
     } catch (err) {
@@ -113,7 +101,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, logger);
         logger?.info(
           {
             runId,
@@ -140,12 +128,13 @@ export class ReviewRunExecutor {
   /** Execute a single agent's review against a PR, streaming progress. */
   private async runOneAgent(
     workspaceId: string,
-    pull: PullRow,
-    repo: typeof schema.repos.$inferSelect,
+    pull: ReviewPull,
+    repo: ReviewRepoRef,
     diff: UnifiedDiff,
     agent: Agent,
     runId: string,
     parentLog: RunLogger,
+    logger?: Logger,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -156,11 +145,11 @@ export class ReviewRunExecutor {
     runLog.info(`Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
 
     try {
-      // Resolve the agent's LLM provider. (container.llm throws if the provider
+      // Resolve the agent's LLM provider. (deps.llm throws if the provider
       // key is missing — caught below and persisted as a failed run.)
       const llm = await runLog.step(
         `Resolving ${agent.provider} provider`,
-        () => this.container.llm(agent.provider as Provider),
+        () => this.deps.llm(agent.provider as Provider),
         { kind: 'tool' },
       );
 
@@ -210,7 +199,7 @@ export class ReviewRunExecutor {
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
         checkCancelled: () => {
-          if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
+          if (this.deps.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
       const { tokensIn, tokensOut, costUsd, grounding } = outcome;
@@ -229,7 +218,7 @@ export class ReviewRunExecutor {
       // review → findings → PR reviewed-sha → run completion → trace commit
       // together or not at all. If any write fails, nothing is left behind and
       // the catch below records the run as failed (outside the transaction).
-      const { review, findingRows } = await this.container.reviewsUow.run(async ({ reviews }) => {
+      const { review, findingRows } = await this.deps.uow.run(async ({ reviews }) => {
         const review = await reviews.insertReview({
           workspaceId,
           prId: pull.id,
@@ -299,7 +288,7 @@ export class ReviewRunExecutor {
         await reviews.saveRunTrace(runId, trace);
         return { review, findingRows };
       });
-      this.container.runBus.complete(runId);
+      this.deps.runBus.complete(runId);
 
       return { review, findings: findingRows, grounding, raw: outcome.review, costUsd };
     } catch (err) {
@@ -307,9 +296,16 @@ export class ReviewRunExecutor {
       // run (and WHY it failed) is visible on the UI after a reload.
       const cancelled = err instanceof RunCancelledError;
       const status = cancelled ? 'cancelled' : 'failed';
+      // A failed DB write arrives as a PersistenceError whose message is short
+      // and safe (the UI shows `agent_runs.error`), never drizzle's
+      // "Failed query: <sql> params: <trace JSON>". The full error goes to the
+      // server log only.
       const msg = cancelled ? 'Cancelled by user' : (err as Error).message;
+      if (err instanceof PersistenceError) {
+        logger?.error({ runId, err: err.cause }, 'review: persisting the run failed');
+      }
       runLog.error(cancelled ? 'Run cancelled by user' : `Run failed: ${msg}`);
-      await this.repo
+      await this.deps.runs
         .completeAgentRun(runId, {
           status,
           durationMs: Date.now() - start,
@@ -321,10 +317,10 @@ export class ReviewRunExecutor {
           error: msg,
         })
         .catch(() => undefined);
-      await this.repo
+      await this.deps.runs
         .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
         .catch(() => undefined);
-      this.container.runBus.complete(runId);
+      this.deps.runBus.complete(runId);
       throw err;
     }
   }
@@ -349,7 +345,7 @@ export class ReviewRunExecutor {
     if (changedFiles.length === 0) return undefined;
     let rows;
     try {
-      rows = await this.container.repoIntel.getCallerSignatures(repoId, changedFiles, 10);
+      rows = await this.deps.repoIntel().getCallerSignatures(repoId, changedFiles, 10);
     } catch (err) {
       // Never let an enrichment break the run — surface only as a Live Log info.
       runLog.info(`callers digest: repoIntel failed — ${(err as Error).message}`);
@@ -382,7 +378,7 @@ export class ReviewRunExecutor {
     runLog: RunLogger,
   ): Promise<string | undefined> {
     try {
-      const map = await this.container.repoIntel.getRepoMap(repoId);
+      const map = await this.deps.repoIntel().getRepoMap(repoId);
       if (map.degraded || map.text.trim().length === 0) return undefined;
       runLog.info(`repo map: ${map.tokens} token(s) attached (cached=${map.cached})`);
       return map.text;
@@ -405,7 +401,7 @@ export class ReviewRunExecutor {
     const changedFiles = diff.files.map((f) => f.path);
     if (changedFiles.length === 0) return '';
     try {
-      const ranks = await this.container.repoIntel.getFileRank(repoId, changedFiles);
+      const ranks = await this.deps.repoIntel().getFileRank(repoId, changedFiles);
       if (ranks.length === 0) return '';
       const hot = ranks.filter((r) => r.percentile >= 95);
       if (hot.length === 0) return '';
@@ -423,7 +419,7 @@ export class ReviewRunExecutor {
    */
   private traceFromBuffer(
     runId: string,
-    pull: PullRow,
+    pull: ReviewPull,
     agent: Agent,
     grounding: string,
     durationMs = 0,
@@ -443,7 +439,7 @@ export class ReviewRunExecutor {
       raw_output: '',
       memory_pulled: [],
       specs_read: [],
-      log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
+      log: this.deps.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
     };
   }
 }
