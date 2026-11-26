@@ -69,3 +69,10 @@ Each PR is based on the previous one in its stack. After every backend PR the
 - Audit and phase-0 details: PR "fix: phase 0 bugs" and `INSIGHTS.md` session notes.
 - Correction to the audit: a job timeout is not retried (`TimeoutError` is not retryable),
   so retries never overlap; nothing to fix there.
+- B5 (repo-intel): the callers digest (`getCallerSignatures`) was **not** switched to the
+  persisted `references` index. The two sources differ in extractor (ast-grep vs regex),
+  file scope (walk limits), snapshot (`last_indexed_sha` vs working tree) and order (the
+  digest is truncated at `limit`), so the switch would change the review prompt. Details
+  and the path to do it: `server/src/modules/repo-intel/README.md` ("Callers digest").
+- B5: `MAX_PARSE_MS_PER_FILE` was never enforced (a timer cannot interrupt synchronous
+  parsing); the no-op `withTimeout` wrapper was removed and the constant documented.

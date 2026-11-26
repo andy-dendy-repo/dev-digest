@@ -11,6 +11,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## What Doesn't Work
 <!-- Dead ends and antipatterns — always with WHY. Most-skipped, most valuable. -->
+- **2026-11-27 — `withTimeout` cannot time out synchronous work.** Don't wrap a sync call as `withTimeout(Promise.resolve().then(() => syncFn()), ms)` expecting a cap, because the sync call runs inside the same microtask drain and the race settles before the timer (a macrotask) can fire; the repo-intel per-file parse "watchdog" was such a no-op and was removed. A real cap needs a worker thread. (`server/src/modules/repo-intel/pipeline/parse-file.ts`)
 
 ## Codebase Patterns
 <!-- Non-default conventions and architecture decisions. -->
@@ -22,6 +23,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-27 — Repositories take `DbOrTx`; cross-repository atomicity goes through a per-module `UnitOfWork` port.** The port lives in `<m>/ports.ts`, the generic `DrizzleUnitOfWork` in `db/unit-of-work.ts`, the getter in the container (`reviewsUow`). A repository may still wrap its own aggregate's writes in `this.db.transaction` (becomes a savepoint inside a UoW), e.g. agent version bumps lock the row with `.for('update')`. (`server/src/db/unit-of-work.ts`, `server/src/modules/agents/repository.ts`)
 - **2026-11-27 — `container.agentsRepo` is an `AgentsPort` returning the shared `Agent` DTO (snake_case), not `AgentRow`.** Read `agent.system_prompt` / `ci_fail_on` / `repo_intel` in reviews code; the row → DTO mapping (`toAgentDto`, `toAgentVersionDto` with `AgentVersionConfig.parse`) runs inside `AgentsRepository`. Job handlers are registered in `app.ts` `registerJobHandlers` (clone), not in route plugins (repo-intel's still are). (`server/src/modules/agents/ports.ts`, `server/src/app.ts`)
 - **2026-11-27 — Reviews code works on `ReviewPull` / `ReviewRecord` / `FindingRecord`, wired by `createReviewService(container)`.** `container.reviewRepo` is a `ReviewStore` (reviews ports + pulls' `ReviewSummaryPort`/`RunCostsPort`); rows are mapped in `reviews/repository/mappers.ts`. Build `ReviewService`/`ReviewRunExecutor` through `createReviewService` (`reviews/routes.ts`, also used by the boot reaper in `app.ts`), because git and the repo-intel facade are passed as lazy `() =>` getters to keep construction timing. Executor tests need a real `new RunBus()` (class with private state), not an object fake. (`server/src/modules/reviews/ports.ts`, `server/test/reviews-service.test.ts`)
+- **2026-11-27 — Supersedes "`container.agentsRepo` is an `AgentsPort`…" (2026-11-27) on job handlers:** repo-intel's INDEX/REFRESH/RESYNC handlers are now registered in `app.ts` too, via `registerRepoIntelJobHandlers(container.jobs, () => container.repoIndexer)`. Keep them on `container.repoIndexer`, not `container.repoIntel`, because tests swap the facade with `overrides.repoIntel` and jobs must still index with the real pipeline. (`server/src/modules/repo-intel/indexing.ts`, `server/src/app.ts`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
@@ -32,6 +34,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-27 — drizzle-orm 0.45 wraps driver errors: `err.message` is `Failed query: <sql>\nparams: <all params>`.** The Postgres message is on `err.cause`. Don't persist or show `err.message` of a failed write as-is: `run-executor` stores it in `agent_runs.error`, so a failed trace write saves the whole prompt/trace JSON there. (`server/src/modules/reviews/run-executor.ts`)
 - **2026-11-27 — Batched upsert in drizzle-orm 0.45: `onConflictDoUpdate({ set: { col: sql`excluded.<snake_col>` } })`, and dedupe the conflict key first.** A literal in `set` would write the same value to every row; a key repeated in one `values([...])` fails with `ON CONFLICT DO UPDATE command cannot affect row a second time`. (`server/src/modules/pulls/repository.ts`, `server/src/modules/settings/repository.ts`)
 - **2026-11-27 — Supersedes "drizzle-orm 0.45 wraps driver errors" (2026-11-27):** `DrizzleUnitOfWork.run` now rethrows a `DrizzleQueryError` (exported from `drizzle-orm`) as `PersistenceError` (short message, driver error on `cause`), so `agent_runs.error` holds `Database write failed (details in the server log)` and the executor logs `err.cause`. Writes outside a unit of work (e.g. `getPrFiles` in the diff fallback) still surface the raw drizzle message. (`server/src/db/unit-of-work.ts`, `server/src/modules/reviews/run-executor.ts`)
+- **2026-11-27 — Three source files contain a literal NUL byte (dedupe-key separators).** `grep` reports them as binary and silently skips line matches: use `grep -a`; the Read tool warns and Edit/Write refuse them, so edit them with a script that keeps the bytes. Files: `src/adapters/depgraph/index.ts`, `src/modules/repo-intel/pipeline/repo-map.ts`, `src/platform/model-router.ts`.
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -53,6 +56,8 @@ Failed jobs no longer crash the API (`done` gets a handler), Octokit failures be
 `AgentsService({agents, llm})`, `RepoService({repos, jobs, git})`; `agents/domain.ts` holds the request Zod schemas (service types are `z.infer`); `JobQueue` port in `vendor/shared/adapters.ts` (client copy synced), `MockJobQueue` in mocks; agents helpers↔repository cycle gone. Layer baseline 45 → 36 (only reviews + repo-intel debt left).
 ### 2026-11-27 — B4: reviews behind ports
 `ReviewService`/`ReviewRunExecutor`/`DiffLoader` take deps (`reviews/ports.ts`: `ReviewsPort`, `RunsPort`, `PullLookupPort`, `DiffSource`, `RepoIntelReadPort`, `AgentsReadPort`); `parseUnifiedDiff` → `reviews/diff.ts`; hand-written `ReviewDto` replaced by shared `ReviewRecord`. Failed DB writes in a run store a safe message (test-first). Layer baseline 36 → 25 (repo-intel only).
+### 2026-11-27 — B5: repo-intel behind ports
+`RepoIntelStore` / `CodeParser` / `CloneReader` / `Tokenizer` / `DepGraph` in `repo-intel/ports.ts`; the 765-line service split into `indexing`, `blast`, `callers`, `phantom`, `index-queries` + a delegating facade; walk moved to `adapters/clone-reader`, endpoint/cron extractors to `repo-intel/facts.ts`. Layer baseline 25 → 0 (on top of B4). Callers digest left on ripgrep: the persisted `references` index is not equivalent (see repo-intel README).
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
