@@ -29,6 +29,19 @@ No container, no Docker, no network. If a use case is hard to construct like thi
 its dependencies are too wide. Narrow the deps object instead of reaching for the
 container.
 
+## Type-check your tests yourself
+
+`pnpm typecheck` covers `src/**` only, and Vitest strips types without checking them.
+So a fake that no longer matches its port still runs green, and existing files under
+`test/` already carry type errors. Check only the test files you wrote. From `server/`:
+
+1. Write a temporary `tsconfig.tests.tmp.json`:
+   `{ "extends": "./tsconfig.json", "include": ["src/**/*.ts", "test/helpers/**/*.ts", "test/<your-file>.test.ts"] }`
+2. Run `pnpm exec tsc --noEmit -p tsconfig.tests.tmp.json`.
+3. Delete the file.
+
+The temp config must sit in `server/` so `@types/node` resolves.
+
 ## Commands (server/)
 
 - Hermetic: `pnpm exec vitest run --exclude '**/*.it.test.ts'`

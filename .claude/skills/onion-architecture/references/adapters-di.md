@@ -12,6 +12,9 @@ wrong way: the core has to import the adapter folder to see its own dependency. 
 you touch one, move the interface to the core and leave only the class in
 `src/adapters/`.
 
+`client/src/vendor/shared/adapters.ts` is an old, unsynced copy, and the UI uses no
+ports. Add a port to the server copy only.
+
 A port's signature uses domain types only. SDK types (`Octokit`, `SimpleGit`,
 `OpenAI.ChatCompletion`, `SgNode`…) stop at the adapter.
 
@@ -38,6 +41,14 @@ js-tiktoken) stays an adapter behind a port.
 - it accepts `ContainerOverrides` so tests inject mocks;
 - it exposes shared repositories (`agentsRepo`, `reviewRepo`) so modules never import
   each other's repository files.
+
+A **new** getter returns the port type, not the class:
+`get pullsRepo(): PullsPort { return (this._pullsRepo ??= new DrizzlePullsRepository(this.db)); }`.
+A getter typed as the concrete class lets every caller reach Drizzle-specific methods,
+and the port stops being the boundary. The existing `agentsRepo` and `reviewRepo`
+getters return classes; that is debt. Add an `overrides` slot when a route test needs
+to swap the implementation. Use-case tests don't need one: they build the service
+with fakes directly.
 
 When you add an external system:
 1. Add the port to `adapters.ts`.

@@ -71,6 +71,8 @@ in the right ring.
 - The layer check exits 0.
 - `pnpm typecheck` passes in `server/`. If `reviewer-core` changed, `npm run typecheck`
   passes there too.
+- New test files type-check. `pnpm typecheck` skips `test/`; see
+  [references/testing.md](references/testing.md#type-check-your-tests-yourself).
 - Every new port has a real implementation wired in `container.ts` and a fake or mock
   used by a test.
 
@@ -81,7 +83,7 @@ in the right ring.
      `vendor/shared` (copy it to `client/src/vendor/shared` if the UI reads it).
   2. Add a use-case method on the module's service.
   3. Add a port method in `ports.ts`, implement it in `repository.ts`, and wire it in
-     the container.
+     the container through a getter typed as the port.
   4. The route stays thin: `parse → service.method(...) → return`.
 - **New external system** (API, CLI, SDK).
   1. Add a port interface in `vendor/shared/adapters.ts` that uses domain types only.
@@ -91,6 +93,13 @@ in the right ring.
   4. Add a mock in `mocks.ts`.
 
   See [references/adapters-di.md](references/adapters-di.md).
+- **New input for the review engine** (repo docs, config, extra context).
+  1. Add an optional field to `ReviewInput` in `reviewer-core`.
+  2. The server resolves the value through a port, e.g. `GitClient.readFile` for a
+     file in the clone, and passes the string in.
+  3. Untrusted text goes through the engine's `wrapUntrusted` fencing.
+
+  See [references/reviewer-core.md](references/reviewer-core.md).
 - **New table or query.** Write the schema in `src/db/schema/`, then run
   `pnpm db:generate` for a new migration. The repository maps rows to domain types,
   and the port signature never mentions Drizzle. See
