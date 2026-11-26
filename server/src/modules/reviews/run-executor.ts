@@ -4,7 +4,8 @@ import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
-import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './repository.js';
+import type { ReviewRepository, PullRow } from './repository.js';
+import type { Persisted } from './ports.js';
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
@@ -28,8 +29,8 @@ export type Logger = {
 // A reduced "Review per file" — same schema as Review (the model returns a small
 // Review per file; we merge findings + take the worst verdict / mean score).
 export type RunOutcome = {
-  review: ReviewRow;
-  findings: FindingRow[];
+  review: Persisted;
+  findings: Persisted[];
   grounding: string;
   raw: Review;
   costUsd: number | null;
@@ -221,78 +222,84 @@ export class ReviewRunExecutor {
 
       const keptFindings = outcome.review.findings;
 
-      // ---- Persist review + findings ----------------------------------------
-      const review = await this.repo.insertReview({
-        workspaceId,
-        prId: pull.id,
-        agentId: agent.id,
-        runId,
-        kind: 'review',
-        verdict: outcome.review.verdict,
-        summary: outcome.review.summary,
-        score: outcome.review.score,
-        model: agent.model,
-      });
-      const findingRows = await this.repo.insertFindings(review.id, keptFindings);
-      runLog.result(`Persisted review ${review.id} with ${findingRows.length} finding(s)`);
-
-      // Mark the commit this review ran against so the PR list can tell
-      // reviewed / needs-review (head moved) / stale apart.
-      await this.repo.markReviewed(pull.id, pull.headSha);
-
-      const durationMs = Date.now() - start;
-
       // Deterministic blocker count (severity ≥ the agent's gate) — the signal
       // the timeline colors on, NOT the model's self-reported verdict.
       const blockers = countBlockers(keptFindings, agent.ciFailOn);
 
-      // ---- Observability: agent_runs + ONE run_traces document --------------
-      await this.repo.completeAgentRun(runId, {
-        status: 'done',
-        durationMs,
-        tokensIn,
-        tokensOut,
-        costUsd,
-        findingsCount: findingRows.length,
-        grounding,
-        score: outcome.review.score,
-        blockers,
-        error: null,
-      });
-
-      const trace: RunTrace = {
-        config: {
-          agent: agent.name,
-          version: String(agent.version),
-          provider: agent.provider,
+      // ---- Persist (ONE transaction) ----------------------------------------
+      // review → findings → PR reviewed-sha → run completion → trace commit
+      // together or not at all. If any write fails, nothing is left behind and
+      // the catch below records the run as failed (outside the transaction).
+      const { review, findingRows } = await this.container.reviewsUow.run(async ({ reviews }) => {
+        const review = await reviews.insertReview({
+          workspaceId,
+          prId: pull.id,
+          agentId: agent.id,
+          runId,
+          kind: 'review',
+          verdict: outcome.review.verdict,
+          summary: outcome.review.summary,
+          score: outcome.review.score,
           model: agent.model,
-          pr: pull.number,
-          source: 'local',
-        },
-        stats: {
-          duration_ms: durationMs,
-          tokens_in: tokensIn,
-          tokens_out: tokensOut,
-          cost_usd: costUsd,
-          findings: findingRows.length,
+        });
+        const findingRows = await reviews.insertFindings(review.id, keptFindings);
+        runLog.result(`Persisted review ${review.id} with ${findingRows.length} finding(s)`);
+
+        // Mark the commit this review ran against so the PR list can tell
+        // reviewed / needs-review (head moved) / stale apart.
+        await reviews.markReviewed(pull.id, pull.headSha);
+
+        const durationMs = Date.now() - start;
+
+        // ---- Observability: agent_runs + ONE run_traces document ------------
+        await reviews.completeAgentRun(runId, {
+          status: 'done',
+          durationMs,
+          tokensIn,
+          tokensOut,
+          costUsd,
+          findingsCount: findingRows.length,
           grounding,
-        },
-        prompt_assembly: outcome.assembly,
-        tool_calls: outcome.chunks.map((c) => ({
-          tool: 'review_file',
-          args: c.label,
-          meta: outcome.mode,
-          ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
-        })),
-        raw_output: outcome.raw,
-        memory_pulled: [],
-        specs_read: [],
-        // Persisted log = the run's FULL event buffer (incl. shared pre-work:
-        // diff load + intent), not just events recorded inside this method.
-        log: runLog.logFor(runId),
-      };
-      runLog.info('Run complete; trace persisted');
-      await this.repo.saveRunTrace(runId, trace);
+          score: outcome.review.score,
+          blockers,
+          error: null,
+        });
+
+        const trace: RunTrace = {
+          config: {
+            agent: agent.name,
+            version: String(agent.version),
+            provider: agent.provider,
+            model: agent.model,
+            pr: pull.number,
+            source: 'local',
+          },
+          stats: {
+            duration_ms: durationMs,
+            tokens_in: tokensIn,
+            tokens_out: tokensOut,
+            cost_usd: costUsd,
+            findings: findingRows.length,
+            grounding,
+          },
+          prompt_assembly: outcome.assembly,
+          tool_calls: outcome.chunks.map((c) => ({
+            tool: 'review_file',
+            args: c.label,
+            meta: outcome.mode,
+            ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
+          })),
+          raw_output: outcome.raw,
+          memory_pulled: [],
+          specs_read: [],
+          // Persisted log = the run's FULL event buffer (incl. shared pre-work:
+          // diff load + intent), not just events recorded inside this method.
+          log: runLog.logFor(runId),
+        };
+        runLog.info('Run complete; trace persisted');
+        await reviews.saveRunTrace(runId, trace);
+        return { review, findingRows };
+      });
       this.container.runBus.complete(runId);
 
       return { review, findings: findingRows, grounding, raw: outcome.review, costUsd };

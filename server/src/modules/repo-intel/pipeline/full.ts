@@ -36,6 +36,7 @@ import {
 import type {
   IndexerEdgeRow,
   IndexerFileFactsRow,
+  IndexerFileRankRow,
   IndexerReferenceRow,
   IndexerSymbolRow,
   RepoIntelRepository,
@@ -199,19 +200,14 @@ export async function runFullIndex(
 
   await parseQ.onIdle();
 
-  // Persist phase -------------------------------------------------------
-  // Delete-then-insert is the idempotent shape blast already uses. Keeps
-  // the new UNIQUE index (symbols_repo_path_name_kind_line_uq) happy.
-  await repository.deleteAllForRepo(repoId);
-  await repository.insertSymbols(symbolsBuf);
-  await repository.insertReferences(refsBuf);
-
-  // --- T3: graph → resolve → rank → repo-map → facts -------------------
-  // Skipped when the soft budget tripped: we're already over time, and the
-  // graph build would blow past the hard cap. status then stays 'partial'.
+  // Graph phase (no DB) ------------------------------------------------
+  // Built BEFORE the persist transaction so the slow dependency-cruiser pass
+  // never runs while a connection/transaction is held. Skipped when the soft
+  // budget tripped: we're already over time, and the graph build would blow
+  // past the hard cap. status then stays 'partial'.
   let graphFailed: string | undefined;
   let edgeRows: IndexerEdgeRow[] = [];
-  let rankCount = 0;
+  let rankRows: IndexerFileRankRow[] = [];
   if (!softBudgetReached) {
     try {
       const edges = await container.depgraph.buildEdges(repo.clonePath, walk.files);
@@ -219,62 +215,80 @@ export async function runFullIndex(
     } catch (err) {
       graphFailed = asMessage(err);
     }
-    await repository.replaceEdges(repoId, edgeRows);
-
-    // Resolve references.decl_file via the fresh graph. Full index inserts
-    // rows with NULL decl_file, so no reset is needed (step 5).
-    await repository.resolveReferences(repoId, { reset: false });
-
     // Rank (PageRank only; hotness=0 — Option B).
-    const rankRows = computeFileRank(walk.files, edgeRows);
-    rankCount = rankRows.length;
-    await repository.replaceFileRank(repoId, rankRows);
-
-    // Repo-map render → cache. Drop stale entries (prior SHAs) first.
-    const candidates = await repository.getRepoMapCandidates(repoId);
-    const map = renderRepoMap(candidates, container.tokenizer, DEFAULT_REPO_MAP_TOKEN_BUDGET);
-    await repository.deleteRepoMapCache(repoId);
-    if (currentSha) {
-      await repository.putRepoMapCache(
-        repoId,
-        currentSha,
-        DEFAULT_REPO_MAP_TOKEN_BUDGET,
-        map.text,
-        map.tokens,
-      );
-    }
-
-    // Per-file facts (endpoints/crons) for the blast facade.
-    await repository.replaceFileFacts(repoId, factsBuf);
+    rankRows = computeFileRank(walk.files, edgeRows);
   }
+  const rankCount = rankRows.length;
 
   // Clean pass → 'full'. Any degradation (soft budget, graph failure, or a
   // parse error) keeps it honestly 'partial'.
   const clean = !softBudgetReached && !graphFailed && parseDegraded.length === 0;
   const status: IndexStatus = clean ? 'full' : 'partial';
-  const stats: Record<string, unknown> = {
-    ...walk.stats,
-    filesSeen: walk.files.length,
-    symbolsWritten: symbolsBuf.length,
-    referencesWritten: refsBuf.length,
-    edgesWritten: edgeRows.length,
-    ranked: rankCount,
-    factsWritten: factsBuf.length,
-    hotnessAvailable: false, // Option B — rank = pagerank only
-    ...(graphFailed ? { graphFailed } : {}),
-    softBudgetReached,
-    parseDegraded,
-    durationMs: Date.now() - startedAt,
-  };
 
-  await repository.upsertIndexState({
-    repoId,
-    lastIndexedSha: currentSha,
-    indexerVersion: INDEXER_VERSION,
-    status,
-    filesIndexed,
-    filesSkipped,
-    stats,
+  // Persist phase (ONE transaction) -------------------------------------
+  // The whole index for this repo is swapped atomically: readers keep seeing
+  // the previous index until commit (never an empty/half-written one), and a
+  // failure part-way rolls back to it. Delete-then-insert is the idempotent
+  // shape blast already uses; keeps the UNIQUE index
+  // (symbols_repo_path_name_kind_line_uq) happy.
+  await repository.transaction(async (index) => {
+    await index.deleteAllForRepo(repoId);
+    await index.insertSymbols(symbolsBuf);
+    await index.insertReferences(refsBuf);
+
+    // --- T3: graph → resolve → rank → repo-map → facts -----------------
+    if (!softBudgetReached) {
+      await index.replaceEdges(repoId, edgeRows);
+
+      // Resolve references.decl_file via the fresh graph. Full index inserts
+      // rows with NULL decl_file, so no reset is needed (step 5).
+      await index.resolveReferences(repoId, { reset: false });
+
+      await index.replaceFileRank(repoId, rankRows);
+
+      // Repo-map render → cache. Drop stale entries (prior SHAs) first. The
+      // candidates read sees this transaction's fresh symbols + rank.
+      const candidates = await index.getRepoMapCandidates(repoId);
+      const map = renderRepoMap(candidates, container.tokenizer, DEFAULT_REPO_MAP_TOKEN_BUDGET);
+      await index.deleteRepoMapCache(repoId);
+      if (currentSha) {
+        await index.putRepoMapCache(
+          repoId,
+          currentSha,
+          DEFAULT_REPO_MAP_TOKEN_BUDGET,
+          map.text,
+          map.tokens,
+        );
+      }
+
+      // Per-file facts (endpoints/crons) for the blast facade.
+      await index.replaceFileFacts(repoId, factsBuf);
+    }
+
+    const stats: Record<string, unknown> = {
+      ...walk.stats,
+      filesSeen: walk.files.length,
+      symbolsWritten: symbolsBuf.length,
+      referencesWritten: refsBuf.length,
+      edgesWritten: edgeRows.length,
+      ranked: rankCount,
+      factsWritten: factsBuf.length,
+      hotnessAvailable: false, // Option B — rank = pagerank only
+      ...(graphFailed ? { graphFailed } : {}),
+      softBudgetReached,
+      parseDegraded,
+      durationMs: Date.now() - startedAt,
+    };
+
+    await index.upsertIndexState({
+      repoId,
+      lastIndexedSha: currentSha,
+      indexerVersion: INDEXER_VERSION,
+      status,
+      filesIndexed,
+      filesSkipped,
+      stats,
+    });
   });
 
   return {

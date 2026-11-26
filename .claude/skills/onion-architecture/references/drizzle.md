@@ -62,27 +62,39 @@ neither". So the use case opens the transaction, through a port, without seeing
 Drizzle.
 
 ```ts
-// ports.ts (Application)
-export interface UnitOfWork {
-  run<T>(work: (repos: { reviews: ReviewsPort; runs: RunsPort }) => Promise<T>): Promise<T>;
+// reviews/ports.ts (Application): the use case names the repos it needs
+export interface ReviewsUnitOfWork {
+  run<T>(work: (repos: { reviews: ReviewWritePort }) => Promise<T>): Promise<T>;
 }
 
-// src/db/unit-of-work.ts (Infrastructure)
+// src/db/client.ts (Infrastructure)
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type DbOrTx = Db | Tx;
 
-export class DrizzleUnitOfWork implements UnitOfWork {
-  constructor(private db: Db) {}
-  run<T>(work: (repos: { reviews: ReviewsPort; runs: RunsPort }) => Promise<T>) {
-    return this.db.transaction((tx) =>
-      work({ reviews: new ReviewRepository(tx), runs: new RunRepository(tx) }),
-    );
+// src/db/unit-of-work.ts (Infrastructure): one generic class serves every module's port
+export class DrizzleUnitOfWork<Repos> {
+  constructor(private db: Db, private makeRepos: (tx: DbOrTx) => Repos) {}
+  run<T>(work: (repos: Repos) => Promise<T>) {
+    return this.db.transaction((tx) => work(this.makeRepos(tx)));
   }
+}
+
+// platform/container.ts (composition root): getter typed as the port
+get reviewsUow(): ReviewsUnitOfWork {
+  return (this._reviewsUow ??= new DrizzleUnitOfWork(this.db, (tx) => ({
+    reviews: new ReviewRepository(tx),
+  })));
 }
 ```
 
-- Repositories take `Db | Tx` in their constructor so the same class serves both
+- Repositories take `DbOrTx` in their constructor so the same class serves both
   paths.
 - A repository never opens its own transaction around another repository's writes.
+  It may wrap its **own** multi-statement write (agent + its version snapshot,
+  delete + insert of a link set) in `this.db.transaction(...)`; inside a unit of
+  work that becomes a savepoint.
+- Keep slow I/O (LLM, GitHub, parsing, graph building) outside `work`: the
+  transaction holds a pooled connection and its row locks until it ends.
 - The in-memory fake `UnitOfWork` for tests just calls `work(fakes)`.
 
 ## postgres.js

@@ -14,7 +14,7 @@
  * facade keeps returning degraded — never throws.
  */
 import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
+import type { DbOrTx } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
 import type { DegradedReason, FileRankRow, IndexState, IndexStatus } from './types.js';
@@ -131,7 +131,19 @@ export interface ResolvedCallerRow {
 }
 
 export class RepoIntelRepository {
-  constructor(private db: Db) {}
+  /** `db` is the shared client or a transaction (see `transaction` below). */
+  constructor(private db: DbOrTx) {}
+
+  /**
+   * Run `work` against a copy of this repository bound to ONE transaction:
+   * every write inside commits together or rolls back together. The full
+   * reindex uses it to swap a repo's whole index atomically, so readers never
+   * see the half-written (or empty) index mid-reindex. Keep slow work (parsing,
+   * graph building) outside `work`: the transaction holds a pooled connection.
+   */
+  transaction<T>(work: (repo: RepoIntelRepository) => Promise<T>): Promise<T> {
+    return this.db.transaction((tx) => work(new RepoIntelRepository(tx)));
+  }
 
   async getRepoBasics(repoId: string): Promise<RepoBasics | null> {
     const [row] = await this.db
