@@ -44,7 +44,7 @@ export function RunRow({
             title={t("timeline.goToReview")}
             style={s.agentLink(!!onGoToReview)}
           >
-            {run.agent_name ?? "Agent"}
+            {run.agent_name ?? t("agentFallback")}
           </button>{" "}
           <span className="mono" style={s.model}>
             {run.provider}/{run.model}

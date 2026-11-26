@@ -1,42 +1,44 @@
 import { describe, it, expect } from "vitest";
-import { formatCost, formatTokenCount, formatTokenSplit } from "./format-cost";
+import { costParts, secondsOf, tokenParts } from "./format-cost";
 
-describe("formatCost", () => {
-  it("no data is '—', never a fake $0.00", () => {
-    expect(formatCost(null)).toBe("—");
-    expect(formatCost(undefined)).toBe("—");
-    expect(formatCost(Number.NaN)).toBe("—");
+describe("costParts", () => {
+  it("no data is 'none', never a fake $0.00", () => {
+    expect(costParts(null)).toEqual({ kind: "none" });
+    expect(costParts(undefined)).toEqual({ kind: "none" });
+    expect(costParts(Number.NaN)).toEqual({ kind: "none" });
   });
 
-  it("a genuinely free run is $0", () => {
-    expect(formatCost(0)).toBe("$0");
+  it("a genuinely free run is 0", () => {
+    expect(costParts(0)).toEqual({ kind: "usd", amount: "0" });
   });
 
-  it("keeps ≥ 3 decimals for cents-level values ($0.012, not $0.01)", () => {
-    expect(formatCost(0.0123)).toBe("$0.012");
-    expect(formatCost(0.014)).toBe("$0.014");
-    expect(formatCost(0.041)).toBe("$0.041");
+  it("keeps ≥ 3 decimals for cents-level values (0.012, not 0.01)", () => {
+    expect(costParts(0.0123)).toEqual({ kind: "usd", amount: "0.012" });
+    expect(costParts(0.014)).toEqual({ kind: "usd", amount: "0.014" });
+    expect(costParts(0.041)).toEqual({ kind: "usd", amount: "0.041" });
   });
 
   it("uses 2 significant digits below a cent", () => {
-    expect(formatCost(0.00131)).toBe("$0.0013");
-    expect(formatCost(0.0014)).toBe("$0.0014");
-    expect(formatCost(0.00004)).toBe("<$0.0001");
+    expect(costParts(0.00131)).toEqual({ kind: "usd", amount: "0.0013" });
+    expect(costParts(0.0014)).toEqual({ kind: "usd", amount: "0.0014" });
+    expect(costParts(0.00004)).toEqual({ kind: "below", amount: "0.0001" });
   });
 
   it("uses 2 decimals from $1", () => {
-    expect(formatCost(1.234)).toBe("$1.23");
+    expect(costParts(1.234)).toEqual({ kind: "usd", amount: "1.23" });
   });
 });
 
-describe("token formatting", () => {
+describe("tokenParts", () => {
   it("compacts counts", () => {
-    expect(formatTokenCount(950)).toBe("950");
-    expect(formatTokenCount(8210)).toBe("8.2K");
-    expect(formatTokenCount(1_250_000)).toBe("1.3M");
+    expect(tokenParts(950)).toEqual({ value: "950", unit: "" });
+    expect(tokenParts(8210)).toEqual({ value: "8.2", unit: "k" });
+    expect(tokenParts(1_250_000)).toEqual({ value: "1.3", unit: "m" });
   });
+});
 
-  it("formats an in→out split", () => {
-    expect(formatTokenSplit(8210, 1290)).toBe("8.2K→1.3K");
+describe("secondsOf", () => {
+  it("keeps one decimal", () => {
+    expect(secondsOf(1234)).toBe("1.2");
   });
 });

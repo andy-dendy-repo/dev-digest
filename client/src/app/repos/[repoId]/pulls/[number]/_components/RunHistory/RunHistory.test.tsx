@@ -5,12 +5,11 @@
  * and shows the review score ring.
  */
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
 import type { RunSummary } from "@devdigest/shared";
 import type { FindingPreviewItem } from "@/components/findings-preview";
-import messages from "../../../../../../../../messages/en/prReview.json";
+import { renderWithProviders } from "@/test/render";
 import { RunHistory } from "./RunHistory";
 
 afterEach(cleanup);
@@ -38,11 +37,7 @@ function run(o: Partial<RunSummary>): RunSummary {
 }
 
 function renderRuns(runs: RunSummary[], findingsByRun?: Map<string, FindingPreviewItem[]>) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <RunHistory runs={runs} onOpenTrace={() => {}} findingsByRun={findingsByRun} />
-    </NextIntlClientProvider>,
-  );
+  return renderWithProviders(<RunHistory runs={runs} onOpenTrace={() => {}} findingsByRun={findingsByRun} />);
 }
 
 describe("RunHistory — outcome badge", () => {

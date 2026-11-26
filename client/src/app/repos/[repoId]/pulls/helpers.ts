@@ -14,17 +14,21 @@ export function sizeOf(pr: PrMeta): SizeInfo {
   return { size, lines };
 }
 
-/** Compact relative time for the list's UPDATED column (e.g. "3h", "2d"). */
-export function relativeTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const then = Date.parse(iso);
-  if (Number.isNaN(then)) return "—";
-  const m = Math.max(0, Math.round((Date.now() - then) / 60_000));
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
+export type RelativeTime = { unit: "none" | "now" | "m" | "h" | "d"; value: number };
+
+/**
+ * Compact age for the list's UPDATED column, as parts for the
+ * `list.relativeTime` message ("now", "45m", "3h", "2d"; "—" when unknown).
+ */
+export function relativeTime(iso: string | null | undefined, now = Date.now()): RelativeTime {
+  const then = iso ? Date.parse(iso) : Number.NaN;
+  if (Number.isNaN(then)) return { unit: "none", value: 0 };
+  const m = Math.max(0, Math.round((now - then) / 60_000));
+  if (m < 1) return { unit: "now", value: 0 };
+  if (m < 60) return { unit: "m", value: m };
   const h = Math.round(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.round(h / 24)}d`;
+  if (h < 24) return { unit: "h", value: h };
+  return { unit: "d", value: Math.round(h / 24) };
 }
 
 /**

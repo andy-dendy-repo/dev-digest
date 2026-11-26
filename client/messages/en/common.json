@@ -29,5 +29,26 @@
   },
   "meta": {
     "loading": "Loading…"
+  },
+  "home": {
+    "breadcrumb": "DevDigest",
+    "title": "Welcome to DevDigest",
+    "subtitle": "Local-first AI PR review",
+    "emptyTitle": "No repositories yet",
+    "emptyBody": "Add a repository to start reviewing pull requests. Set your API keys once in Settings → API Keys.",
+    "emptyCta": "Add repository",
+    "redirecting": "Taking you to your repository…",
+    "open": "Open {repo}"
+  },
+  "toast": {
+    "dismiss": "Dismiss"
+  },
+  "format": {
+    "none": "—",
+    "usd": "${amount}",
+    "usdBelow": "<${amount}",
+    "tokens": "{unit, select, k {{value}K} m {{value}M} other {{value}}}",
+    "tokenSplit": "{tokensIn}→{tokensOut}",
+    "seconds": "{seconds}s"
   }
 }

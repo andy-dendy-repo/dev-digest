@@ -3,6 +3,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { s, lineRowFor, lineSignFor } from "../styles";
@@ -22,6 +23,7 @@ export function CodeLine({
 }) {
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
+  const t = useTranslations("shell");
 
   if (ln.kind === "hunk") {
     return (
@@ -46,8 +48,8 @@ export function CodeLine({
           {showAdd && target && (
             <button
               type="button"
-              title="Add a comment on this line"
-              aria-label="Add a comment on this line"
+              title={t("diffViewer.addComment")}
+              aria-label={t("diffViewer.addComment")}
               onClick={() => setComposing(true)}
               style={cs.addBtn}
             >

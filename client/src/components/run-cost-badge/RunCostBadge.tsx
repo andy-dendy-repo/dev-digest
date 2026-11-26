@@ -8,7 +8,8 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { NO_COST, formatCost, formatTokenSplit } from "@/lib/format-cost";
+import { costParts } from "@/lib/format-cost";
+import { useFormat } from "@/lib/use-format";
 
 export type RunCostBadgeVariant = "compact" | "total" | "split";
 
@@ -24,13 +25,16 @@ export function RunCostBadge({
   variant?: RunCostBadgeVariant;
 }) {
   const t = useTranslations("prReview");
-  const cost = formatCost(costUsd);
+  const format = useFormat();
+  const cost = format.cost(costUsd);
   const hasTokens = tokensIn != null && tokensOut != null;
 
   let text = cost;
-  if (cost !== NO_COST && hasTokens) {
-    if (variant === "total") text = `${t("cost.tokensTotal", { count: tokensIn + tokensOut })} · ${cost}`;
-    else if (variant === "split") text = `${cost} · ${formatTokenSplit(tokensIn, tokensOut)}`;
+  if (costParts(costUsd).kind !== "none" && hasTokens) {
+    if (variant === "total")
+      text = t("cost.totalLabel", { tokens: t("cost.tokensTotal", { count: tokensIn + tokensOut }), cost });
+    else if (variant === "split")
+      text = t("cost.splitLabel", { cost, tokens: format.tokenSplit(tokensIn, tokensOut) });
   }
 
   return (

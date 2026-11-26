@@ -4,6 +4,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 
 type ToastKind = "success" | "error" | "info";
 interface Toast {
@@ -39,12 +40,42 @@ export const notify = {
 };
 
 const COLORS: Record<ToastKind, { bg: string; border: string; icon: string }> = {
-  success: { bg: "var(--ok-bg, #052e1c)", border: "var(--ok)", icon: "✓" },
-  error: { bg: "var(--crit-bg, #2e0a0a)", border: "var(--crit)", icon: "✕" },
+  success: { bg: "var(--ok-bg)", border: "var(--ok)", icon: "✓" },
+  error: { bg: "var(--crit-bg)", border: "var(--crit)", icon: "✕" },
   info: { bg: "var(--bg-elevated)", border: "var(--border-strong)", icon: "ℹ" },
 };
 
+const s = {
+  stack: {
+    position: "fixed",
+    bottom: 20,
+    right: 20,
+    zIndex: 1000,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    maxWidth: 380,
+  },
+  toast: (c: (typeof COLORS)[ToastKind]): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "12px 16px",
+    borderRadius: 9,
+    background: c.bg,
+    border: `1px solid ${c.border}`,
+    color: "var(--text-primary)",
+    fontSize: 14,
+    boxShadow: "var(--shadow-toast)",
+    animation: "ddToastIn .16s ease-out",
+  }),
+  icon: (c: (typeof COLORS)[ToastKind]): React.CSSProperties => ({ color: c.border, fontWeight: 700 }),
+  message: { flex: 1 },
+  dismiss: { background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16 },
+} satisfies Record<string, React.CSSProperties | ((c: (typeof COLORS)[ToastKind]) => React.CSSProperties)>;
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("common");
   const [items, setItems] = React.useState<Toast[]>([]);
   const seq = React.useRef(1);
 
@@ -76,45 +107,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={api}>
       {children}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          maxWidth: 380,
-        }}
-        role="status"
-        aria-live="polite"
-      >
-        {items.map((t) => {
-          const c = COLORS[t.kind];
+      <div style={s.stack} role="status" aria-live="polite">
+        {items.map((item) => {
+          const c = COLORS[item.kind];
           return (
-            <div
-              key={t.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "12px 16px",
-                borderRadius: 9,
-                background: c.bg,
-                border: `1px solid ${c.border}`,
-                color: "var(--text-primary)",
-                fontSize: 14,
-                boxShadow: "0 6px 24px rgba(0,0,0,0.3)",
-                animation: "ddToastIn .16s ease-out",
-              }}
-            >
-              <span style={{ color: c.border, fontWeight: 700 }}>{c.icon}</span>
-              <span style={{ flex: 1 }}>{t.message}</span>
+            <div key={item.id} style={s.toast(c)}>
+              <span style={s.icon(c)}>{c.icon}</span>
+              <span style={s.message}>{item.message}</span>
               <button
-                onClick={() => setItems((prev) => prev.filter((x) => x.id !== t.id))}
-                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16 }}
-                aria-label="Dismiss"
+                onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))}
+                style={s.dismiss}
+                aria-label={t("toast.dismiss")}
               >
                 ×
               </button>

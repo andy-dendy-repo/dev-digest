@@ -63,16 +63,16 @@ describe("relativeTime", () => {
   afterEach(() => vi.useRealTimers());
 
   it("shows a dash for a missing or unparseable time", () => {
-    expect(relativeTime(null)).toBe("—");
-    expect(relativeTime("soon")).toBe("—");
+    expect(relativeTime(null)).toEqual({ unit: "none", value: 0 });
+    expect(relativeTime("soon")).toEqual({ unit: "none", value: 0 });
   });
 
   it("rounds to minutes, hours and days", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-10T12:00:00Z"));
-    expect(relativeTime("2026-06-10T11:59:50Z")).toBe("now");
-    expect(relativeTime("2026-06-10T11:15:00Z")).toBe("45m");
-    expect(relativeTime("2026-06-10T07:00:00Z")).toBe("5h");
-    expect(relativeTime("2026-06-07T12:00:00Z")).toBe("3d");
+    expect(relativeTime("2026-06-10T11:59:50Z")).toEqual({ unit: "now", value: 0 });
+    expect(relativeTime("2026-06-10T11:15:00Z")).toEqual({ unit: "m", value: 45 });
+    expect(relativeTime("2026-06-10T07:00:00Z")).toEqual({ unit: "h", value: 5 });
+    expect(relativeTime("2026-06-07T12:00:00Z")).toEqual({ unit: "d", value: 3 });
   });
 });

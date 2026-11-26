@@ -16,7 +16,9 @@
     "components": "TRIFECTA COMPONENTS",
     "privateData": "Private data",
     "untrustedInput": "Untrusted input",
-    "exfilPath": "Exfil path"
+    "exfilPath": "Exfil path",
+    "detected": "Lethal Trifecta detected",
+    "count": "{count} finding(s)"
   },
   "verdict": {
     "requestChanges": "Request changes",
@@ -43,7 +45,9 @@
     "running": "Running…",
     "runReview": "Run Review",
     "mergedWarning": "Already merged — review is informational",
-    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code."
+    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code.",
+    "noAgents": "No agents yet — create one",
+    "disabledHint": "{model} · disabled"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
@@ -107,16 +111,21 @@
     "errorBody": "The engine returned an error.",
     "emptyTitle": "No pull requests",
     "emptyAllBody": "No open PRs found for this repo yet. Refresh to sync from GitHub.",
-    "emptyStatusBody": "No PRs with status “{status}”."
+    "emptyStatusBody": "No PRs with status “{status}”.",
+    "relativeTime": "{unit, select, now {now} m {{value}m} h {{value}h} d {{value}d} other {—}}"
   },
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
-    "deleteRun": "Delete run"
+    "deleteRun": "Delete run",
+    "title": "Timeline",
+    "hint": "runs & commits · newest first"
   },
   "cost": {
     "title": "Run cost (USD) — OpenRouter-reported or estimated from model prices",
-    "tokensTotal": "{count, number} tok"
+    "tokensTotal": "{count, number} tok",
+    "totalLabel": "{tokens} · {cost}",
+    "splitLabel": "{cost} · {tokens}"
   },
   "findingsPreview": {
     "header": "{count, plural, one {# finding} other {# findings}} in this run",
@@ -125,5 +134,52 @@
   "meta": {
     "list": "Pull requests",
     "detail": "PR #{number}"
+  },
+  "agentFallback": "Agent",
+  "tabs": {
+    "overview": "Overview",
+    "findings": "Agent runs",
+    "diff": "Files changed"
+  },
+  "header": {
+    "viewOnGithub": "View on GitHub",
+    "staleBanner": "This PR is already {status} — running a review is informational and won't affect the merged code."
+  },
+  "detail": {
+    "loadErrorTitle": "Couldn't load this pull request",
+    "loadErrorBody": "PR #{number} could not be loaded.",
+    "confirmDeleteRun": "Delete this run from history? (its logs are removed too)"
+  },
+  "overview": {
+    "description": "Description"
+  },
+  "live": {
+    "title": "Live review",
+    "cancel": "Cancel",
+    "openTrace": "Open run trace",
+    "inProgress": "Review in progress…",
+    "inProgressSub": "the agent is analyzing the diff — this can take a while on large PRs."
+  },
+  "reviewRuns": {
+    "title": "Review runs",
+    "hint": "grouped by run · newest first",
+    "emptyTitle": "No findings yet",
+    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+  },
+  "accordion": {
+    "counts": "{findings, plural, one {# finding} other {# findings}}{blockers, plural, =0 {} one { · # blocker} other { · # blockers}}",
+    "verdict": {
+      "request_changes": "request changes",
+      "comment": "comment",
+      "approve": "approve"
+    },
+    "delete": "Delete this review run",
+    "confirmDelete": "Delete this \"{agent}\" review run and its findings?",
+    "agentGeneric": "agent"
+  },
+  "diff": {
+    "title": "Files changed · {count} files",
+    "showComments": "Show comments ({count})",
+    "hideComments": "Hide comments ({count})"
   }
 }

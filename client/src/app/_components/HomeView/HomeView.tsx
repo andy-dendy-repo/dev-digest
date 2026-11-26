@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { EmptyState, Button, Skeleton } from "@devdigest/ui";
 import { useRepos } from "@/lib/hooks/repos";
@@ -10,6 +11,7 @@ import { PageContainer } from "@/components/page-shell";
 import { s } from "./styles";
 
 export function HomeView() {
+  const t = useTranslations("common");
   const router = useRouter();
   const { data: repos, isLoading, isError } = useRepos();
   const first = repos?.[0];
@@ -19,8 +21,8 @@ export function HomeView() {
   }, [first, router]);
 
   return (
-    <AppShell crumb={[{ label: "DevDigest" }]}>
-      <PageContainer title="Welcome to DevDigest" subtitle="Local-first AI PR review">
+    <AppShell crumb={[{ label: t("home.breadcrumb") }]}>
+      <PageContainer title={t("home.title")} subtitle={t("home.subtitle")}>
         {isLoading ? (
           <div style={s.loading}>
             <Skeleton height={20} width={240} />
@@ -30,16 +32,16 @@ export function HomeView() {
         ) : isError || !first ? (
           <EmptyState
             icon="GitBranch"
-            title="No repositories yet"
-            body="Add a repository to start reviewing pull requests. Set your API keys once in Settings → API Keys."
-            cta="Add repository"
+            title={t("home.emptyTitle")}
+            body={t("home.emptyBody")}
+            cta={t("home.emptyCta")}
             onCta={() => router.push("/onboarding")}
           />
         ) : (
           <div>
-            <p style={s.redirecting}>Taking you to your repository…</p>
+            <p style={s.redirecting}>{t("home.redirecting")}</p>
             <Button kind="primary" onClick={() => router.push(`/repos/${first.id}/pulls`)}>
-              Open {first.full_name}
+              {t("home.open", { repo: first.full_name })}
             </Button>
           </div>
         )}
