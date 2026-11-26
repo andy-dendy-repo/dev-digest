@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: engine-readme-context
+expected_outcome: |
+  reviewer-core gains an optional README input and stays free of I/O; the server reads the
+  README from the clone through an existing port (GitClient.readFile) rather than node:fs in a
+  module, passes the string in, the engine fences it as untrusted, a missing README degrades
+  gracefully, and a hermetic test covers it.

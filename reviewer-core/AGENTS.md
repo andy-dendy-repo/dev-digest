@@ -33,6 +33,7 @@ TypeScript 5.7 · Zod 3.24 · Vitest 2 · openai 4 (used by the OpenRouter provi
 - Do not add keyword/denylist filtering of untrusted text as an injection defense (see INSIGHTS.md).
 
 ## Read when…
+- **Read [onion-architecture](../.claude/skills/onion-architecture/SKILL.md) before** adding an import or a new input to the engine; its layer check blocks Node I/O imports and server code (globals like `fetch` / `process.env` still need review).
 - **Read [README.md](README.md) when** you need the pipeline or the public API.
 - **Read [../server/README.md](../server/README.md#review-context-non-obvious) when** you need the reasoning behind the injection guard and grounding.
 - **Read [specs/](specs/README.md) before** changing engine behaviour; **[docs/](docs/README.md)** for design decisions.

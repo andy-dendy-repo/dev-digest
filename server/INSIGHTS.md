@@ -22,6 +22,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 <!-- Dependency quirks, with library + version. -->
 - **2026-11-21 — Use `doublePrecision` for USD columns, not `numeric`.** drizzle-orm 0.45 maps Postgres `numeric` to a JS `string` by default, which would leak strings into `z.number()` contracts; `agent_runs.cost_usd` is `doublePrecision` for that reason. (`server/src/db/schema/runs.ts`)
 
+- **2026-11-26 — Tests are never type-checked.** Type-check new test files with a temporary `tsconfig` in `server/` that extends `tsconfig.json` and includes your test file, because `pnpm typecheck` includes only `src/**/*.ts`, Vitest strips types, and `test/` already has 15 latent TS errors (so including all of `test/` fails). (`server/tsconfig.json`)
+
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
 

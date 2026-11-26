@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: new-endpoint-pr-cost
+expected_outcome: |
+  A thin Fastify route that parses params, resolves the workspace and calls a use case;
+  the use case depends on a port interface (not on Drizzle, db/schema or the Container);
+  a Drizzle repository implements the port and does the aggregation query; wiring happens
+  in the container / route plugin; a hermetic test exercises the use case with an
+  in-memory fake of the port.
