@@ -1,7 +1,7 @@
 # docs/ — client/
 
 **How things work now.** Design notes and decisions. Planned work goes in `../specs/`;
-lessons go in `../INSIGHTS.md`; rules for Claude go in `../CLAUDE.md`.
+lessons go in `../INSIGHTS.md`; rules for agents go in `../AGENTS.md`.
 
 Link to the README and code rather than restating them; this folder plus the README
 is the single source of truth.

@@ -73,7 +73,7 @@ Every entry goes under one of these `##` headings — no free text, no new headi
 
 - **Actionable cold:** a reader with no context knows what to do or avoid **and where**
   (file, function, library + version, threshold).
-- **Not obvious from the code**, and not already in README, `docs/`, or `CLAUDE.md`.
+- **Not obvious from the code**, and not already in README, `docs/`, or `AGENTS.md`.
 - **Saves 5+ minutes** the next time this situation comes up.
 - **Not generic knowledge** ("be careful with async" is noise).
 - **1–3 lines.** If it needs a paragraph, it is documentation → `docs/`, not an insight.
