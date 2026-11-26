@@ -3,7 +3,7 @@
 Non-obvious lessons for this module, read before non-trivial work here.
 **Append-only:** add entries at the end of a section; never rewrite or delete (corrections → `Supersedes "<title>" (<date>): …`).
 Entry format: `- **YYYY-MM-DD — <title>.** <Do/avoid X> when <context>, because <why>. (\`path\`)`
-Record with `/engineering-insights` (capture · wrap-up · review). Rules belong in `CLAUDE.md`, design in `docs/`.
+Record with `/engineering-insights` (capture · wrap-up · review). Rules belong in `AGENTS.md`, design in `docs/`.
 
 ## What Works
 <!-- Approaches and solutions that proved themselves. -->

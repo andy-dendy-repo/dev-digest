@@ -18,7 +18,7 @@ the code — don't write it."*
 
 - Generic programming knowledge ("use async/await", "validate input")
 - One-off issues unlikely to recur
-- Anything already in README, `docs/`, `CLAUDE.md`, or official library docs
+- Anything already in README, `docs/`, `AGENTS.md`, or official library docs
 - Routine edits, trivial fixes, conversational back-and-forth
 - Anything that needs a paragraph — that is documentation, put it in `docs/`
 - Secrets, tokens, `.env` values, personal data

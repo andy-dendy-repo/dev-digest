@@ -17,10 +17,10 @@ allowed to change existing entries, and only with explicit user approval.
    - **Resolved Open Questions** → propose moving the answer to the right section.
    - **Misplaced** — entry about another module, or in the wrong section.
    - **Promote** — a lesson that has become a hard rule → propose a one-line rule
-     for that module's `CLAUDE.md` (Gotchas / Do not touch) and keep the insight.
+     for that module's `AGENTS.md` (Gotchas / Do not touch) and keep the insight.
    - **Size** — more than ~200 entries in a file → propose splitting by domain
      (e.g. `server/INSIGHTS-database.md`, `server/INSIGHTS-repo-intel.md`) and linking
-     them from the module `CLAUDE.md`.
+     them from the module `AGENTS.md`.
    - **Session Notes** older than ~3 months → propose collapsing them into one line each.
 3. **Present a proposal** grouped by file, each item as:
    `[delete|merge|move|rewrite|promote] <section> › "<title>" — <reason>`
