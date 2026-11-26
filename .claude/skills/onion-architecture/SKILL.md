@@ -9,6 +9,10 @@ description: >
   reviewer-core engine code; when a backend import crosses modules/, db/, adapters/ or
   platform/; and when reviewing or refactoring backend layering. Use it even when the
   request never says "architecture": every backend feature lands in these rings.
+metadata:
+  version: "1.1.0"
+  updated: "2026-11-26"
+  sources: references.md
 ---
 
 # Onion Architecture: DevDigest backend
