@@ -29,7 +29,7 @@ Apply the rules to the code you write or move. Where existing code deviates (see
 restructuring bloats diffs and hides the real change.
 
 **Stay inside `client/`.** A client task is not a licence to edit `server/` or the
-`vendor/shared` contracts. A contract change touches two drifted copies and triggers server
+`vendor/shared` contracts. A contract change touches both copies (CI keeps them identical) and triggers server
 CI, so it is a separate decision for the user. If the UI needs data the API doesn't return
 yet, make the prop optional, render nothing when it's missing, and say which field is needed.
 
@@ -235,7 +235,7 @@ component (render + wire events)
    Mutations invalidate through the factory (`reviewKeys.byPr(prId)`), never through a
    retyped array. Keys stay with their domain, not in a global `queryKeys.ts` [S28].
 5. **Contract types come from `@devdigest/shared`** (also re-exported by `lib/types.ts`). If a
-   contract is missing, see the root AGENTS.md note on the two drifted `vendor/shared` copies
+   contract is missing, see the root AGENTS.md note on the two `vendor/shared` copies
    before adding one.
 6. **Next.js data approach:** this app uses Next's *External HTTP API* approach. The browser
    talks to the Fastify API through `lib/api.ts`. There is no Data Access Layer and no Server

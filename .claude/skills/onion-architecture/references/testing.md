@@ -32,15 +32,15 @@ container.
 ## Type-check your tests yourself
 
 `pnpm typecheck` covers `src/**` only, and Vitest strips types without checking them.
-So a fake that no longer matches its port still runs green, and existing files under
-`test/` already carry type errors. Check only the test files you wrote. From `server/`:
+So a fake that no longer matches its port still runs green. Type-check `src/` and
+`test/` together from `server/`:
 
-1. Write a temporary `tsconfig.tests.tmp.json`:
-   `{ "extends": "./tsconfig.json", "include": ["src/**/*.ts", "test/helpers/**/*.ts", "test/<your-file>.test.ts"] }`
-2. Run `pnpm exec tsc --noEmit -p tsconfig.tests.tmp.json`.
-3. Delete the file.
+```bash
+pnpm exec tsc --noEmit -p tsconfig.test.json
+```
 
-The temp config must sit in `server/` so `@types/node` resolves.
+`test/` is clean, and CI (`server-unit` → typecheck job) runs this command, so a new
+type error in a test fails the build.
 
 ## Commands (server/)
 

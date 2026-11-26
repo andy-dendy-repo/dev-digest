@@ -29,8 +29,8 @@ This file is a map. Module rules live in each module's own `AGENTS.md`.
 - Rules live in `AGENTS.md`. `CLAUDE.md` only imports it (`@AGENTS.md`) and holds Claude Code-specific notes. Edit `AGENTS.md`.
 
 ## Gotchas
-- The two `vendor/shared` copies have already drifted. Run
-  `diff -r server/src/vendor/shared client/src/vendor/shared` before changing a contract.
+- The two `vendor/shared` copies must stay identical (CI `shared-contracts.yml` fails on drift).
+  Edit the server copy, then sync: `rsync -a --delete server/src/vendor/shared/ client/src/vendor/shared/`.
 - CI is path-filtered per package (`.github/workflows/`); a change in `reviewer-core/`
   also triggers `server-unit` (the server type-checks against its source).
 

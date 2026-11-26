@@ -1,7 +1,10 @@
 # Server unit suite — Fastify API (@devdigest/api), hermetic tests only.
 #
 # Two jobs:
-#  - typecheck: type-check on Linux only — the platform CI and the exported
+#  - typecheck: type-check src AND test/ (tsconfig.test.json — Vitest strips
+#    types, so test-only type errors are invisible otherwise), then run the
+#    onion-architecture layer check (dependency-cruiser; fails on violations
+#    not in the known-violations baseline). Linux only — the platform CI and the exported
 #    agent-runner both run on. We deliberately do NOT matrix over Windows/macOS:
 #    macOS is covered by daily local dev, Windows is not a ship target, and
 #    `@ast-grep/napi` is exact-pinned so its native binary only changes on a
@@ -19,11 +22,13 @@ on:
     paths:
       - 'server/**'
       - 'reviewer-core/**'
+      - '.claude/skills/onion-architecture/assets/**'
       - '.github/workflows/server-unit.yml'
   pull_request:
     paths:
       - 'server/**'
       - 'reviewer-core/**'
+      - '.claude/skills/onion-architecture/assets/**'
       - '.github/workflows/server-unit.yml'
 
 permissions:
@@ -64,6 +69,17 @@ jobs:
         run: npm ci
 
       - run: pnpm typecheck
+
+      - name: Type-check tests
+        run: pnpm exec tsc --noEmit -p tsconfig.test.json
+
+      # Onion-architecture layer check (see .claude/skills/onion-architecture).
+      # Needs both modules' node_modules: package rules match resolved paths.
+      - name: Layer check
+        run: >-
+          pnpm exec depcruise src ../reviewer-core/src
+          --config ../.claude/skills/onion-architecture/assets/depcruise.cjs
+          --ignore-known ../.claude/skills/onion-architecture/assets/known-violations.json
 
   unit:
     name: tests
