@@ -1,0 +1,129 @@
+{
+  "$comment": "Which skill reviews which changed files, and which deterministic checks run. Globs are repo-relative (**, *, ?, {a,b}). Every directory in .claude/skills/ must appear under `skills` or `excluded`; route.mjs fails otherwise. See README.md for how to add a skill.",
+  "batchSize": 15,
+  "ignore": [
+    "**/node_modules",
+    "**/node_modules/**",
+    "**/pnpm-lock.yaml",
+    "**/package-lock.json",
+    "**/*.md",
+    ".claude/**",
+    "server/clones/**",
+    "server/src/db/migrations/meta/**",
+    "**/*.{png,jpg,jpeg,gif,svg,ico,webp}"
+  ],
+  "excluded": ["engineering-insights", "mermaid-diagram", "pr-self-review"],
+  "skills": {
+    "frontend-ui-architecture": {
+      "area": "ui",
+      "maxSeverity": "critical",
+      "include": ["client/src/**/*.{ts,tsx}"],
+      "exclude": ["client/src/vendor/shared/**"]
+    },
+    "react-best-practices": {
+      "area": "ui",
+      "maxSeverity": "critical",
+      "include": ["client/src/**/*.tsx", "client/src/**/use-*.ts", "client/src/lib/hooks/**/*.ts"],
+      "exclude": ["client/src/**/*.test.{ts,tsx}"]
+    },
+    "next-best-practices": {
+      "area": "ui",
+      "maxSeverity": "critical",
+      "include": ["client/src/app/**/*.{ts,tsx}", "client/next.config.*", "client/src/middleware.ts", "client/src/proxy.ts"],
+      "exclude": ["client/src/**/*.test.{ts,tsx}"]
+    },
+    "react-testing-library": {
+      "area": "ui",
+      "maxSeverity": "major",
+      "include": ["client/src/**/*.test.{ts,tsx}", "client/src/test/**"]
+    },
+    "onion-architecture": {
+      "area": "backend",
+      "maxSeverity": "critical",
+      "include": ["server/src/**/*.ts", "reviewer-core/src/**/*.ts", "server/test/**/*.ts", "reviewer-core/test/**/*.ts"]
+    },
+    "fastify-best-practices": {
+      "area": "backend",
+      "maxSeverity": "critical",
+      "include": ["server/src/**/routes.ts", "server/src/modules/_shared/**/*.ts", "server/src/app.ts", "server/src/server.ts", "server/src/platform/**/*.ts"]
+    },
+    "drizzle-orm-patterns": {
+      "area": "backend",
+      "maxSeverity": "critical",
+      "include": ["server/src/db/**/*.ts", "server/src/**/repository.ts", "server/src/**/repository/**/*.ts", "server/drizzle.config.ts"]
+    },
+    "postgresql-table-design": {
+      "area": "backend",
+      "maxSeverity": "critical",
+      "include": ["server/src/db/schema.ts", "server/src/db/schema/**", "server/src/db/migrations/*.sql"]
+    },
+    "security": {
+      "area": "full-stack",
+      "maxSeverity": "critical",
+      "include": ["server/src/**/*.ts", "reviewer-core/src/**/*.ts", "client/src/**/*.{ts,tsx}", "**/.env*", ".github/workflows/*.{yml,yaml}", "**/docker-compose*.yml", "client/next.config.*"],
+      "exclude": ["**/*.test.{ts,tsx}", "**/vendor/shared/**"]
+    },
+    "zod": {
+      "area": "full-stack",
+      "maxSeverity": "major",
+      "include": ["**/vendor/shared/**/*.ts", "server/src/**/routes.ts", "**/*schema*.ts", "reviewer-core/src/**/*.ts"],
+      "exclude": ["**/*.test.ts", "server/src/db/**"]
+    },
+    "typescript-expert": {
+      "area": "full-stack",
+      "maxSeverity": "major",
+      "include": ["server/src/**/*.ts", "reviewer-core/src/**/*.ts", "client/src/**/*.{ts,tsx}"],
+      "exclude": ["**/*.test.{ts,tsx}", "**/vendor/shared/**"]
+    }
+  },
+  "checks": [
+    {
+      "id": "onion-layer",
+      "skill": "onion-architecture",
+      "type": "depcruise",
+      "include": ["server/src/**/*.ts", "reviewer-core/src/**/*.ts"],
+      "cwd": "server",
+      "command": "pnpm exec depcruise src ../reviewer-core/src --config ../.claude/skills/onion-architecture/assets/depcruise.cjs --ignore-known ../.claude/skills/onion-architecture/assets/known-violations.json",
+      "requires": ["server/node_modules", "reviewer-core/node_modules"],
+      "install": "pnpm install (server/) and npm ci (reviewer-core/)",
+      "severity": "critical"
+    },
+    {
+      "id": "typecheck-server",
+      "type": "tsc",
+      "include": ["server/**/*.ts", "reviewer-core/src/**/*.ts"],
+      "cwd": "server",
+      "command": "pnpm exec tsc --noEmit -p tsconfig.test.json",
+      "requires": ["server/node_modules"],
+      "install": "pnpm install (server/)",
+      "severity": "critical"
+    },
+    {
+      "id": "typecheck-reviewer-core",
+      "type": "tsc",
+      "include": ["reviewer-core/**/*.ts"],
+      "cwd": "reviewer-core",
+      "command": "npm run --silent typecheck",
+      "requires": ["reviewer-core/node_modules"],
+      "install": "npm ci (reviewer-core/)",
+      "severity": "critical"
+    },
+    {
+      "id": "typecheck-client",
+      "type": "tsc",
+      "include": ["client/**/*.{ts,tsx}"],
+      "cwd": "client",
+      "command": "pnpm exec tsc --noEmit",
+      "requires": ["client/node_modules"],
+      "install": "pnpm install (client/)",
+      "severity": "critical"
+    },
+    {
+      "id": "vendor-shared-mirror",
+      "type": "mirror",
+      "include": ["server/src/vendor/shared/**", "client/src/vendor/shared/**"],
+      "roots": ["server/src/vendor/shared", "client/src/vendor/shared"],
+      "severity": "major"
+    }
+  ]
+}
