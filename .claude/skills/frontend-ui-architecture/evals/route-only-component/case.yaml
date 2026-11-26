@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: route-only-component
+expected_outcome: |
+  A new component folder under the PR detail route's _components/ (not src/components), with a one-line named re-export index.ts, the duration formatting as a pure function in a helpers.ts next to it, user-visible text in messages/en/prReview.json, and imports outside the folder via @/ or the vendored aliases.
