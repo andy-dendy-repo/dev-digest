@@ -14,7 +14,9 @@ import { AgentsRepository } from '../src/modules/agents/repository.js';
 import { ReviewRepository } from '../src/modules/reviews/repository.js';
 import { RepoIntelRepository } from '../src/modules/repo-intel/repository.js';
 import { runFullIndex } from '../src/modules/repo-intel/pipeline/full.js';
-import type { Container } from '../src/platform/container.js';
+import { AstGrepCodeParser } from '../src/adapters/astgrep/index.js';
+import { FsCloneReader } from '../src/adapters/clone-reader/index.js';
+import type { IndexingDeps } from '../src/modules/repo-intel/ports.js';
 import type { Review } from '@devdigest/shared';
 
 const hasDocker = await dockerAvailable();
@@ -297,13 +299,16 @@ d('transactions: multi-write flows are atomic (Testcontainers pg)', () => {
         .values({ workspaceId, owner: 'acme', name, fullName: `acme/${name}`, clonePath: root })
         .returning();
       const repository = new RepoIntelRepository(pg.handle.db);
-      const container = {
-        git: { currentHead: async () => 'sha-1' },
+      const deps: IndexingDeps = {
+        store: repository,
+        git: { currentHead: async () => 'sha-1', diffNameOnly: async () => [] },
+        parser: new AstGrepCodeParser(),
+        clone: new FsCloneReader(),
         depgraph: { buildEdges: async () => [] },
         tokenizer: { count: (text: string) => Math.ceil(text.length / 4) },
-      } as unknown as Container;
+      };
 
-      const first = await runFullIndex(container, repository, { repoId: repo!.id });
+      const first = await runFullIndex(deps, { repoId: repo!.id });
       expect(first.status).toBe('full');
       const symbolNames = async () =>
         (
@@ -314,7 +319,7 @@ d('transactions: multi-write flows are atomic (Testcontainers pg)', () => {
       // Second pass sees a new file, but its last write (index state) fails.
       await writeFile(join(root, 'src/b.ts'), 'export function beta() { return 2; }\n');
       await failOn('repo_index_state', 'INSERT OR UPDATE');
-      await expect(runFullIndex(container, repository, { repoId: repo!.id })).rejects.toThrow();
+      await expect(runFullIndex(deps, { repoId: repo!.id })).rejects.toThrow();
 
       expect(await symbolNames()).toEqual(['alpha']);
     } finally {

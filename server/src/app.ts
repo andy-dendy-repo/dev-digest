@@ -20,6 +20,7 @@ import { modules } from './modules/index.js';
 import { createReviewService } from './modules/reviews/routes.js';
 import { RepoService, type CloneJobPayload } from './modules/repos/service.js';
 import { CLONE_JOB_KIND } from './modules/repos/constants.js';
+import { registerRepoIntelJobHandlers } from './modules/repo-intel/indexing.js';
 
 // Attach the DI container to every request/instance.
 declare module 'fastify' {
@@ -201,9 +202,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
 }
 
 /**
- * Background job handlers, registered once per container (composition root).
- * repo-intel still registers its INDEX/REFRESH/RESYNC handlers from its own
- * routes plugin (moves here with the repo-intel ports refactor).
+ * Background job handlers, registered once per container (composition root):
+ * clone (repos) and repo-intel INDEX / REFRESH / RESYNC.
  */
 function registerJobHandlers(container: Container): void {
   const repos = new RepoService({
@@ -214,4 +214,6 @@ function registerJobHandlers(container: Container): void {
   container.jobs.register(CLONE_JOB_KIND, (payload) =>
     repos.runCloneJob(payload as CloneJobPayload),
   );
+  // Resolved per job: the real indexer even when a test overrides the facade.
+  registerRepoIntelJobHandlers(container.jobs, () => container.repoIndexer);
 }
