@@ -37,8 +37,13 @@ flowchart TD
 ```
 
 Cross-cutting chrome lives in `src/components/app-shell` (nav, breadcrumbs,
-`g`-then-key shortcuts). Pages are thin; feature logic sits in colocated
-`_components/<Name>/` folders, each with its own `*.test.tsx`.
+`g`-then-key shortcuts). Pages are thin server components: they await `params`,
+export `generateMetadata` (titles from `messages/en/<ns>.json › meta`) and render
+one client view from colocated `_components/<View>/` folders, each with its own
+`*.test.tsx`. `src/app/{loading,error,global-error,not-found}.tsx` cover the
+loading, error and 404 states for every route. Client components only receive
+the namespaces in `src/i18n/client-messages.ts`; add a namespace there when a
+client component starts using it (a test fails otherwise).
 
 ## Testing
 

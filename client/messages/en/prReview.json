@@ -121,5 +121,9 @@
   "findingsPreview": {
     "header": "{count, plural, one {# finding} other {# findings}} in this run",
     "trigger": "Show {count, plural, one {# finding} other {# findings}}"
+  },
+  "meta": {
+    "list": "Pull requests",
+    "detail": "PR #{number}"
   }
 }

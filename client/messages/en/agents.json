@@ -95,5 +95,9 @@
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
+  },
+  "meta": {
+    "list": "Agents",
+    "detail": "Agent editor"
   }
 }
