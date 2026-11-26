@@ -6,7 +6,7 @@
                                      reindex (202). NOT a destructive re-clone. */
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 /** Subset of the server's IndexState the badge + completion-poll need (kept
@@ -28,10 +28,20 @@ export interface RepoIntelState {
     becomes visible. The caller (ProjectContextView) owns when to stop polling
     (the status enum is terminal-only, so completion is detected by watching
     `lastIndexedSha`/`updatedAt` advance, not by status). */
+export const repoIntelKeys = {
+  all: ["repo-intel"] as const,
+  state: (repoId: string) => [...repoIntelKeys.all, "state", repoId] as const,
+};
+
+export const repoIntelStateOptions = (repoId: string) =>
+  queryOptions({
+    queryKey: repoIntelKeys.state(repoId),
+    queryFn: () => api.get<RepoIntelState>(`/repos/${repoId}/index-state`),
+  });
+
 export function useRepoIntelStatus(repoId: string | null | undefined, poll = false) {
   return useQuery({
-    queryKey: ["repo-intel-state", repoId],
-    queryFn: () => api.get<RepoIntelState>(`/repos/${repoId}/index-state`),
+    ...repoIntelStateOptions(repoId ?? ""),
     enabled: !!repoId,
     refetchInterval: poll ? 1500 : false,
   });
@@ -43,7 +53,7 @@ export function useResyncRepoIntel(repoId: string | null | undefined) {
   return useMutation({
     mutationFn: () => api.post<{ status: string }>(`/repos/${repoId}/resync`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["repo-intel-state", repoId] });
+      if (repoId) qc.invalidateQueries({ queryKey: repoIntelKeys.state(repoId) });
     },
   });
 }
