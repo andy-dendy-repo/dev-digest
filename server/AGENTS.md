@@ -42,6 +42,7 @@ js-tiktoken · openai 4 / @anthropic-ai/sdk 0.33
 - Existing files in `src/db/migrations/` — add a new migration instead.
 
 ## Read when…
+- **Read [onion-architecture](../.claude/skills/onion-architecture/SKILL.md) before** adding or moving a route, service, repository, adapter, or any import that crosses `modules/`, `db/`, `adapters/`, `platform/`; finish with its layer check.
 - **Read [README.md](README.md) when** adding a route, an env var, or changing what goes into the review prompt.
 - **Read [src/modules/repo-intel/README.md](src/modules/repo-intel/README.md) when** touching indexing, ranking, the repo map, or the `repoIntel` facade.
 - **Read [specs/](specs/README.md) before** building a server feature; **[docs/](docs/README.md)** for design decisions.

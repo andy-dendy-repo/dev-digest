@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: slack-notifier-adapter
+expected_outcome: |
+  A port interface for the notifier with domain-typed arguments; an adapter under
+  server/src/adapters/ that does the HTTP call and translates failures; construction only in
+  platform/container.ts with an overrides slot; a mock in adapters/mocks.ts; the review
+  use case calls the port (no fetch / webhook URL handling in the service), and a
+  notifier failure does not fail the run.

@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: review-layering-violations
+expected_outcome: |
+  A review that identifies the layering problems in the file: the service queries Drizzle
+  and db/schema directly, takes the whole Container, constructs Octokit itself instead of
+  using the GitHubClient port, handles Octokit's RequestError inside the use case,
+  imports another module's repository file, and re-parses data with Zod inside the core;
+  and proposes the port/adapter/repository shape as the fix.
+context:
+  scaffold_script: place-files.sh
