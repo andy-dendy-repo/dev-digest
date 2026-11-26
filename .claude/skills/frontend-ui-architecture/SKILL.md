@@ -11,8 +11,8 @@ description: >
   even if the user never says "architecture". Not for hook misuse or rendering performance
   (react-best-practices), Next.js APIs (next-best-practices) or test-writing (react-testing-library).
 metadata:
-  version: "1.0.1"
-  updated: "2026-11-26"
+  version: "1.1.0"
+  updated: "2026-11-27"
   sources: README.md
 ---
 
@@ -24,9 +24,11 @@ the client already follows and settle the points where the sources disagree. Eac
 its source tag `[Sn]`; the full list is in [README.md](README.md), and per-question detail
 with trade-offs is in [references/research-notes.md](references/research-notes.md).
 
-Apply the rules to the code you write or move. Where existing code deviates (see
-"Known deviations"), leave it unless the task is about it, because drive-by
-restructuring bloats diffs and hides the real change.
+Apply the rules to the code you write or move. The client follows them as of the
+2026-11 architecture refactor (`specs/refactor-architecture.md`), and `pnpm lint` enforces
+the mechanical ones (see "Enforced by lint"). If you find code that deviates, leave it
+unless the task is about it, because drive-by restructuring bloats diffs and hides the real
+change.
 
 **Stay inside `client/`.** A client task is not a licence to edit `server/` or the
 `vendor/shared` contracts. A contract change touches both copies (CI keeps them identical) and triggers server
@@ -215,9 +217,9 @@ component (render + wire events)
 3. **Server state lives in TanStack Query.** Client state is what's left, and it is usually
    small: keep it local and lift it only to the closest common parent. Use context only when
    prop drilling really hurts [S11][S19][S23].
-4. **Query code lives in `src/lib/hooks/<domain>.ts`.** Existing hooks keep their inline keys.
-   For **new or changed** queries in a domain file, define a key factory and `queryOptions` in
-   that same file, and build the hook on top of them [S11][S28][S29]:
+4. **Query code lives in `src/lib/hooks/<domain>.ts`.** Every query is keyed through the
+   domain's key factory and built from `queryOptions` in that same file; the hook sits on top
+   [S11][S28][S29]:
 
    ```ts
    // lib/hooks/reviews.ts
@@ -273,18 +275,16 @@ component (render + wire events)
 - **Colocate tests, styles and stories** with the module they cover [S17][S13]. Browser e2e
   flows stay in the root `e2e/` module.
 
-## Known deviations (don't copy, don't mass-fix)
+## Enforced by lint
 
-Leave these as they are unless the task is about them:
-- **`export *` barrels:** `lib/hooks/index.ts`, `components/{app-shell,page-shell,run-cost-badge,showcase}/index.ts`.
-  Don't add lines to them. A new `lib/hooks/<domain>.ts` is imported directly
-  (`@/lib/hooks/evals`), not re-exported through `lib/hooks/index.ts`.
-- **Hard-coded units in formatters:** `lib/format-cost.ts` and `RunTraceDrawer/helpers.ts`
-  build labels in code. New formatters return parts and leave the text to `messages/`.
-- **Deep relative imports:** about 40 `../../../..` imports of `lib/` and `components/` in
-  `src/app`. When you touch such an import anyway, switch it to `@/`.
-- **Inline query keys** in the existing `lib/hooks/*.ts`. They move to a key factory when that
-  query is next changed.
+`pnpm lint` (ESLint flat config in `client/eslint.config.mjs`, run in CI `client.yml`) fails on:
+- relative imports that climb into `lib/`, `components/`, `i18n/`, `test/` or `vendor/` (use `@/…`);
+- back-door imports of `@devdigest/ui/*` (use the barrel);
+- importing a removed `@/lib/hooks` barrel (import `@/lib/hooks/<domain>`);
+- `export *` outside `src/vendor/ui`;
+- React hooks misuse (`eslint-plugin-react-hooks`).
+
+The rest of this skill (placement, splitting, strings, tokens) is review-time judgement.
 
 ## Before you finish: checklist
 
@@ -293,6 +293,7 @@ Leave these as they are unless the task is about them:
 - [ ] No new `export *`, `utils.ts`, `enum` or global constants file.
 - [ ] Components are thin: rules live in named pure functions, server data in TanStack Query, and nothing is mirrored into state.
 - [ ] Strings are in `messages/` (unit letters in formatted labels too), colours are CSS vars or tokens, and types come from `@devdigest/shared`.
-- [ ] Nothing outside `client/` changed, and no existing `export *` barrel gained a line.
+- [ ] Nothing outside `client/` changed.
+- [ ] `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
 - [ ] Imports outside the component folder use `@/`, and exports are named (default only for Next special files).
 - [ ] Tests sit beside the code, and moved helpers took their tests with them.
