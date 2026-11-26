@@ -1,4 +1,5 @@
 import type {
+  ActiveRun,
   Agent,
   FindingActionKind,
   FindingRecord,
@@ -9,7 +10,6 @@ import type {
   RunTrace,
 } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
-import type { ActiveRun } from './domain.js';
 import type { Logger, ReviewServiceDeps, RunJob } from './ports.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 
@@ -69,13 +69,21 @@ export class ReviewService {
     return this.deps.runs.deleteAgentRun(workspaceId, runId);
   }
 
+  /** 404 unless the run belongs to the workspace (guards every `/runs/:id/*` route). */
+  async assertRunInWorkspace(workspaceId: string, runId: string): Promise<void> {
+    if (!(await this.deps.runs.isRunInWorkspace(workspaceId, runId))) {
+      throw new NotFoundError('Run not found');
+    }
+  }
+
   /**
    * Cancel an in-flight run. Signals a live runner to stop at its next
    * checkpoint AND marks the DB row cancelled + completes the bus immediately —
    * so cancel also works for ORPHANED runs (whose background process died on a
    * server restart) where signalling alone would do nothing.
    */
-  async cancelRun(runId: string): Promise<void> {
+  async cancelRun(workspaceId: string, runId: string): Promise<void> {
+    await this.assertRunInWorkspace(workspaceId, runId);
     this.publish(runId, 'info', 'Cancellation requested — stopping…');
     this.deps.runBus.cancel(runId);
     await this.deps.runs.cancelRunIfRunning(runId);
@@ -167,7 +175,11 @@ export class ReviewService {
     }));
   }
 
-  async getRunTrace(runId: string): Promise<RunTrace | undefined> {
-    return this.deps.runs.getRunTrace(runId);
+  /** The run's trace document; 404 when the run is not in the workspace or has no trace yet. */
+  async getRunTrace(workspaceId: string, runId: string): Promise<RunTrace> {
+    await this.assertRunInWorkspace(workspaceId, runId);
+    const trace = await this.deps.runs.getRunTrace(runId);
+    if (!trace) throw new NotFoundError('Run trace not found');
+    return trace;
   }
 }

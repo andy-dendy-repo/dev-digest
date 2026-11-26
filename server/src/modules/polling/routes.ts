@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { PullsService } from '../pulls/service.js';
@@ -24,7 +25,8 @@ export default async function pollingRoutes(appBase: FastifyInstance) {
     log: app.log,
   });
 
-  app.post('/repos/:id/poll', { schema: { params: IdParams } }, async (req) => {
+  const PollResponse = z.object({ synced: z.number().int(), reviewTriggered: z.literal(false) });
+  app.post('/repos/:id/poll', { schema: { params: IdParams, response: { 200: PollResponse } } }, async (req) => {
     const { workspaceId } = await getContext(container, req);
     return pulls.sync(workspaceId, req.params.id);
   });

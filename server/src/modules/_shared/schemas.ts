@@ -10,3 +10,9 @@ import { z } from 'zod';
  */
 export const IdParams = z.object({ id: z.string().uuid() });
 export type IdParams = z.infer<typeof IdParams>;
+
+/** `{ ok: true }` — acknowledgement body of delete/cancel style routes. */
+export const OkResponse = z.object({ ok: z.literal(true) });
+
+/** `{ ok }` — acknowledgement that reports whether anything was affected. */
+export const OkFlagResponse = z.object({ ok: z.boolean() });

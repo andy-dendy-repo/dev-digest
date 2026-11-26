@@ -34,14 +34,6 @@ export interface PrFilePatch {
   patch: string | null;
 }
 
-/** An in-flight run of a PR (`GET /pulls/:id/runs/active`). */
-export interface ActiveRun {
-  run_id: string;
-  agent_id: string | null;
-  agent_name: string | null;
-  ran_at: string | null;
-}
-
 /** Values for a new `agent_runs` row (created in `running` state). */
 export interface NewAgentRun {
   workspaceId: string;

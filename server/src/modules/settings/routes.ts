@@ -1,11 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import {
-  SettingsUpdate,
-  ConnTestRequest,
-  type ConnTestResult,
-  type SecretsStatus,
-} from '@devdigest/shared';
+import { SettingsUpdate, ConnTestRequest, ConnTestResult, SecretsStatus } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { SettingsService } from './service.js';
 
@@ -15,6 +10,9 @@ import { SettingsService } from './service.js';
  *   GET  /settings/secrets-status  → which provider keys are configured (booleans)
  *   PUT  /settings                 → upsert prefs (key/value rows)
  *   POST /settings/test-connection → test a provider key (OpenAI/Anthropic/OpenRouter/GitHub)
+ *
+ * GET/PUT /settings have no response schema: the body is the raw key/value
+ * bag, while the `Settings` contract carries defaults the serializer would add.
  */
 export default async function settingsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
@@ -33,7 +31,7 @@ export default async function settingsRoutes(appBase: FastifyInstance) {
 
   // Booleans only — the key values are NEVER returned. Drives the
   // "Configured / Not set" badges in the API Keys panel.
-  app.get('/settings/secrets-status', async (req): Promise<SecretsStatus> => {
+  app.get('/settings/secrets-status', { schema: { response: { 200: SecretsStatus } } }, async (req) => {
     await getContext(container, req);
     return settings.secretsStatus();
   });
@@ -46,9 +44,9 @@ export default async function settingsRoutes(appBase: FastifyInstance) {
   app.post(
     '/settings/test-connection',
     {
-      schema: { body: ConnTestRequest },
+      schema: { body: ConnTestRequest, response: { 200: ConnTestResult } },
       config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
     },
-    async (req): Promise<ConnTestResult> => settings.testConnection(req.body.provider, req.body.key),
+    async (req) => settings.testConnection(req.body.provider, req.body.key),
   );
 }

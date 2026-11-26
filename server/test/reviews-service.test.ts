@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Agent, Finding, FindingRecord, LLMProvider, ReviewRecord, RunTrace } from '@devdigest/shared';
+import type { ActiveRun, Agent, Finding, FindingRecord, LLMProvider, ReviewRecord, RunTrace } from '@devdigest/shared';
 import type { Review } from '@devdigest/shared';
 import { MockGitClient, MockLLMProvider } from '../src/adapters/mocks.js';
 import { RunBus } from '../src/platform/sse.js';
@@ -8,7 +8,6 @@ import { ReviewService } from '../src/modules/reviews/service.js';
 import { ReviewRunExecutor } from '../src/modules/reviews/run-executor.js';
 import { DiffLoader } from '../src/modules/reviews/diff-loader.js';
 import type {
-  ActiveRun,
   NewAgentRun,
   PrFilePatch,
   ReviewPull,
@@ -104,6 +103,11 @@ class FakeRuns implements RunsPort {
   }
   async getRunTrace(runId: string) {
     return this.traces.get(runId);
+  }
+  /** Runs this fake knows about are in WS; anything else is foreign. */
+  owned = new Set<string>(['run-9']);
+  async isRunInWorkspace(ws: string, runId: string) {
+    return ws === WS && (this.owned.has(runId) || this.created.some((_, i) => `run-${i + 1}` === runId));
   }
   async activeRunsForPull(): Promise<ActiveRun[]> {
     return [];
@@ -416,10 +420,19 @@ describe('ReviewService (port fakes)', () => {
     const { service, runs, runBus } = makeService();
     let done = false;
     runBus.onDone('run-9', () => (done = true));
-    await service.cancelRun('run-9');
+    await service.cancelRun(WS, 'run-9');
     expect(runs.cancelled).toEqual(['run-9']);
     expect(runBus.buffer('run-9').map((e) => e.msg)).toEqual(['Cancellation requested — stopping…']);
     expect(done).toBe(true);
+  });
+
+  it('runs of another workspace are 404 for cancel and trace (and nothing is signalled)', async () => {
+    const { service, runs, runBus } = makeService();
+    await expect(service.cancelRun('other-ws', 'run-9')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.getRunTrace('other-ws', 'run-9')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.assertRunInWorkspace(WS, 'run-404')).rejects.toBeInstanceOf(NotFoundError);
+    expect(runs.cancelled).toEqual([]);
+    expect(runBus.isCancelled('run-9')).toBe(false);
   });
 
   it('reapStaleRuns delegates to the runs port', async () => {

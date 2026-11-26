@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import type { PrMeta, PrDetail, PrReviewComment } from '@devdigest/shared';
-import { PrCommentInput } from '@devdigest/shared';
+import { z } from 'zod';
+import { PrCommentInput, PrDetail, PrMeta, PrReviewComment } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { PullsService } from './service.js';
@@ -25,20 +25,24 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
     log: app.log,
   });
 
-  app.get('/repos/:id/pulls', { schema: { params: IdParams } }, async (req): Promise<PrMeta[]> => {
-    const { workspaceId } = await getContext(container, req);
-    return pulls.listForRepo(workspaceId, req.params.id);
-  });
+  app.get(
+    '/repos/:id/pulls',
+    { schema: { params: IdParams, response: { 200: z.array(PrMeta) } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return pulls.listForRepo(workspaceId, req.params.id);
+    },
+  );
 
-  app.get('/pulls/:id', { schema: { params: IdParams } }, async (req): Promise<PrDetail> => {
+  app.get('/pulls/:id', { schema: { params: IdParams, response: { 200: PrDetail } } }, async (req) => {
     const { workspaceId } = await getContext(container, req);
     return pulls.getDetail(workspaceId, req.params.id);
   });
 
   app.get(
     '/pulls/:id/comments',
-    { schema: { params: IdParams } },
-    async (req): Promise<PrReviewComment[]> => {
+    { schema: { params: IdParams, response: { 200: z.array(PrReviewComment) } } },
+    async (req) => {
       const { workspaceId } = await getContext(container, req);
       return pulls.listComments(workspaceId, req.params.id);
     },
@@ -46,8 +50,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
   app.post(
     '/pulls/:id/comments',
-    { schema: { params: IdParams, body: PrCommentInput } },
-    async (req): Promise<PrReviewComment> => {
+    { schema: { params: IdParams, body: PrCommentInput, response: { 200: PrReviewComment } } },
+    async (req) => {
       const { workspaceId } = await getContext(container, req);
       return pulls.createComment(workspaceId, req.params.id, req.body);
     },

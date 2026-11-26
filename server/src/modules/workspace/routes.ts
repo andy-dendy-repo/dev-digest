@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getContext } from '../_shared/context.js';
 import { WorkspaceService } from './service.js';
+import { WorkspaceSummary } from './domain.js';
 
 /**
  * F1 — workspace manager: where clones live + a summary of cloned repos.
@@ -16,7 +17,7 @@ export default async function workspaceRoutes(app: FastifyInstance) {
     cloneDir: container.config.cloneDir,
   });
 
-  app.get('/workspace', async (req) => {
+  app.get('/workspace', { schema: { response: { 200: WorkspaceSummary } } }, async (req) => {
     const { workspaceId } = await getContext(container, req);
     return workspace.summary(workspaceId);
   });

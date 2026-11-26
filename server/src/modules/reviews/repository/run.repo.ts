@@ -95,6 +95,15 @@ export async function deleteAgentRun(
   });
 }
 
+/** Whether a run exists in the workspace (ownership check). */
+export async function isRunInWorkspace(db: DbOrTx, workspaceId: string, runId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: t.agentRuns.id })
+    .from(t.agentRuns)
+    .where(and(eq(t.agentRuns.id, runId), eq(t.agentRuns.workspaceId, workspaceId)));
+  return rows.length > 0;
+}
+
 /** Mark a still-running run as cancelled (no-op if it already finished). */
 export async function cancelRunIfRunning(db: DbOrTx, runId: string): Promise<boolean> {
   const rows = await db
