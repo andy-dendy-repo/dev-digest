@@ -11,6 +11,9 @@ vi.mock("@/lib/hooks/reviews", () => ({
 }));
 
 import { FindingsPanel } from "./FindingsPanel";
+import { PrProvider } from "../pr-context";
+
+const PR = { prId: "pr1", repoFullName: null, headSha: null };
 
 afterEach(() => {
   cleanup();
@@ -52,7 +55,9 @@ const ALL_TITLES = FINDINGS.map((f) => f.title);
 function ui(findings: FindingRecord[]) {
   return (
     <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <FindingsPanel findings={findings} prId="pr1" />
+      <PrProvider value={PR}>
+        <FindingsPanel findings={findings} />
+      </PrProvider>
     </NextIntlClientProvider>
   );
 }
@@ -152,10 +157,14 @@ describe("FindingsPanel — keyboard shortcuts", () => {
     return render(
       <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
         <div data-testid="panel-one">
-          <FindingsPanel findings={ONE} prId="pr1" />
+          <PrProvider value={PR}>
+            <FindingsPanel findings={ONE} />
+          </PrProvider>
         </div>
         <div data-testid="panel-two">
-          <FindingsPanel findings={TWO} prId="pr1" />
+          <PrProvider value={PR}>
+            <FindingsPanel findings={TWO} />
+          </PrProvider>
         </div>
       </NextIntlClientProvider>,
     );

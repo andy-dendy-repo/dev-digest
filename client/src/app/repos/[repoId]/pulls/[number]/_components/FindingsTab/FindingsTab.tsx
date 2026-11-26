@@ -1,185 +1,93 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
-import { RunStatus } from "../RunStatus";
+import React from "react";
+import { SectionLabel, EmptyState } from "@devdigest/ui";
+import type { ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import { RunHistory } from "../RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { findingsByRun, lethalTrifectaFindings, runsById } from "./helpers";
+import { LiveRunSection } from "./LiveRunSection";
+import { LethalTrifectaBanner } from "./LethalTrifectaBanner";
 import { s } from "./styles";
-import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
-import type { UseMutationResult } from "@tanstack/react-query";
 
 interface FindingsTabProps {
-  prId: string | null;
+  /** Runs still in flight (server-sourced); non-empty → live section + progress note. */
   liveRunIds: string[];
-  reviewRunning: boolean;
-  lethalTrifecta: FindingRecord[];
-  runs: ReviewRecord[];
+  /** Persisted review runs, newest first. */
+  reviews: ReviewRecord[];
   prRuns: RunSummary[] | undefined;
   prCommits: PrCommit[];
-  cancelMutation: UseMutationResult<any, any, string, any>;
-  /** owner/repo + head sha — used to deep-link a finding's file:line to GitHub. */
-  repoFullName?: string | null;
-  headSha?: string | null;
-  onOpenTrace: (id: string) => void;
-  onDelete: (id: string) => void;
+  onOpenTrace: (runId: string) => void;
+  onDelete: (runId: string) => void;
   onRunDone: () => void;
 }
 
+/** "Agent runs" tab: live runs, lethal-trifecta warning, timeline, review runs. */
 export function FindingsTab({
-  prId,
   liveRunIds,
-  reviewRunning,
-  lethalTrifecta,
-  runs,
+  reviews,
   prRuns,
   prCommits,
-  cancelMutation,
-  repoFullName,
-  headSha,
   onOpenTrace,
   onDelete,
   onRunDone,
 }: FindingsTabProps) {
-  // run_id → run row, so each review's VerdictBanner can show that run's cost.
-  const runsById = React.useMemo(
-    () => new Map((prRuns ?? []).map((r) => [r.run_id, r])),
-    [prRuns],
-  );
-  // run_id → that run's findings, for the timeline's severity icons + preview.
-  const findingsByRun = React.useMemo(
-    () => new Map(runs.flatMap((rv) => (rv.run_id ? [[rv.run_id, rv.findings] as const] : []))),
-    [runs],
-  );
-
-  const handleCancelAll = useCallback(() => {
-    liveRunIds.forEach((id) => cancelMutation.mutate(id));
-  }, [liveRunIds, cancelMutation]);
-
-  const handleOpenFirstTrace = useCallback(() => {
-    if (liveRunIds[0]) onOpenTrace(liveRunIds[0]);
-  }, [liveRunIds, onOpenTrace]);
-
-  const handleOpenTrace = useCallback(
-    (id: string) => {
-      onOpenTrace(id);
-    },
-    [onOpenTrace],
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      onDelete(id);
-    },
-    [onDelete],
-  );
+  const running = liveRunIds.length > 0;
+  const runs = prRuns ?? [];
+  const runById = runsById(runs);
 
   // Timeline → Review-runs navigation: clicking an agent name in the timeline
   // opens + scrolls to that run's accordion below. The nonce re-triggers the
   // scroll even when the same run is clicked twice.
   const [target, setTarget] = React.useState<{ runId: string; n: number } | null>(null);
-  const handleGoToReview = useCallback((runId: string) => {
-    setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
-  }, []);
+  const goToReview = (runId: string) => setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
 
   return (
     <section>
-      {liveRunIds.length > 0 && (
-        <div style={s.liveRunSection}>
-          <SectionLabel
-            icon="Sparkles"
-            right={
-              <div style={s.cancelActions}>
-                <Button
-                  kind="danger"
-                  size="sm"
-                  icon="X"
-                  loading={cancelMutation.isPending}
-                  onClick={handleCancelAll}
-                >
-                  Cancel
-                </Button>
-                <Button kind="ghost" size="sm" icon="FileText" onClick={handleOpenFirstTrace}>
-                  Open run trace
-                </Button>
-              </div>
-            }
-          >
-            Live review
-          </SectionLabel>
-          <RunStatus runIds={liveRunIds} onDone={onRunDone} />
-        </div>
-      )}
+      {running && <LiveRunSection runIds={liveRunIds} onOpenTrace={onOpenTrace} onRunDone={onRunDone} />}
 
-      {reviewRunning && (
-        <div style={s.reviewInProgress}>
-          <Icon.RefreshCw size={16} style={{ color: "var(--accent)", animation: "ddspin 1s linear infinite" }} />
-          <span style={s.reviewInProgressText}>Review in progress…</span>
-          <span style={s.reviewInProgressSub}>
-            the agent is analyzing the diff — this can take a while on large PRs.
-          </span>
-        </div>
-      )}
+      <LethalTrifectaBanner count={lethalTrifectaFindings(reviews).length} />
 
-      {lethalTrifecta.length > 0 && (
-        <div style={s.lethalTrifecta}>
-          <Icon.Shield size={16} style={{ color: "var(--crit)" }} />
-          <span style={s.lethalTrifectaTitle}>Lethal Trifecta detected</span>
-          <Badge color="var(--crit)" bg="transparent">
-            {lethalTrifecta.length} finding(s)
-          </Badge>
-        </div>
-      )}
-
-      {((prRuns && prRuns.length > 0) || prCommits.length > 0) && (
+      {(runs.length > 0 || prCommits.length > 0) && (
         <div style={s.timelineSection}>
           <SectionLabel
             icon="Activity"
-            right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>runs &amp; commits · newest first</span>}
+            right={<span style={s.sectionHint}>runs &amp; commits · newest first</span>}
           >
             Timeline
           </SectionLabel>
           <RunHistory
-            runs={prRuns ?? []}
+            runs={runs}
             commits={prCommits}
-            onOpenTrace={handleOpenTrace}
-            onGoToReview={handleGoToReview}
-            onDelete={handleDelete}
-            findingsByRun={findingsByRun}
+            onOpenTrace={onOpenTrace}
+            onGoToReview={goToReview}
+            onDelete={onDelete}
+            findingsByRun={findingsByRun(reviews)}
           />
         </div>
       )}
 
-      <SectionLabel
-        icon="AlertOctagon"
-        right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>grouped by run · newest first</span>}
-      >
+      <SectionLabel icon="AlertOctagon" right={<span style={s.sectionHint}>grouped by run · newest first</span>}>
         Review runs
       </SectionLabel>
-      {runs.length === 0 ? (
-        reviewRunning || liveRunIds.length > 0 ? null : (
-          <EmptyState
-            icon="Sparkles"
-            title="No findings yet"
-            body="Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
-          />
-        )
-      ) : (
-        prId &&
-        runs.map((review, i) => (
-          <ReviewRunAccordion
-            key={review.id}
-            review={review}
-            run={review.run_id ? runsById.get(review.run_id) : undefined}
-            prId={prId}
-            defaultOpen={i === 0}
-            repoFullName={repoFullName}
-            headSha={headSha}
-            targetRunId={target?.runId ?? null}
-            targetNonce={target?.n ?? 0}
-          />
-        ))
-      )}
+      {reviews.length === 0
+        ? !running && (
+            <EmptyState
+              icon="Sparkles"
+              title="No findings yet"
+              body="Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+            />
+          )
+        : reviews.map((review, i) => (
+            <ReviewRunAccordion
+              key={review.id}
+              review={review}
+              run={review.run_id ? runById.get(review.run_id) : undefined}
+              defaultOpen={i === 0}
+              targetRunId={target?.runId ?? null}
+              targetNonce={target?.n ?? 0}
+            />
+          ))}
     </section>
   );
 }

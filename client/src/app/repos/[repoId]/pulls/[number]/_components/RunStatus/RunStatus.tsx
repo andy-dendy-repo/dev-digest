@@ -4,8 +4,9 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { LiveLogStream, type LogLine } from "@devdigest/ui";
+import { LiveLogStream } from "@devdigest/ui";
 import { useRunEvents } from "@/lib/hooks/reviews";
+import { eventsToLog } from "../run-log";
 import { LOG_HEIGHT } from "./constants";
 import { s } from "./styles";
 
@@ -27,16 +28,10 @@ export function RunStatus({
 
   if (runIds.length === 0) return null;
 
-  const log: LogLine[] = events.map((e) => ({
-    t: e.t,
-    k: e.kind as LogLine["k"],
-    m: e.msg,
-  }));
-
   return (
     <div style={s.wrap}>
       <LiveLogStream
-        log={log}
+        log={eventsToLog(events)}
         running={running}
         height={LOG_HEIGHT}
         elapsedLabel={running ? t("runStatus.elapsed", { count: runIds.length }) : undefined}

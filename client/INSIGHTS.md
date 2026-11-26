@@ -19,6 +19,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-21 — Popovers in the PR list need a portal + `stopPropagation`.** Render them with `createPortal` + `position: fixed` (see `panelPosition`), because the PR table has `overflow: hidden` and clips absolute panels; and stop click propagation on trigger and panel, because React portal events still bubble through the React tree to `PRRow`'s navigating `onClick`. (`client/src/components/findings-preview/FindingsPreview.tsx`)
 - **2026-11-21 — Severity order/counting lives in `src/lib/findings-severity.ts`.** Use `SEVERITIES`, `countBySeverity`, `bySeverityThenConfidence` from there, because `src/components/*` must not import from route folders and the in-run filter, timeline icons and PR list column must agree. (`client/src/lib/findings-severity.ts`)
 - **2026-11-26 — Mutations that show their error inline set `meta: { errorToast: false }`.** The global `MutationCache.onError` toasts every failed mutation, so a local `notify.error` in a catch, or an inline form error without the opt-out, reports the failure twice. (`client/src/lib/providers.tsx`, `useAddRepo` in `client/src/lib/hooks/core.ts`)
+- **2026-11-27 — Query keys of one PR are siblings, not parent/child.** Keep `runKeys.history(prId)` and `runKeys.active(prId)` as `["runs","history",id]` / `["runs","active",id]`, because TanStack invalidation matches by prefix: nesting `active` under `history` makes "delete run" also refetch the 4 s active-run poll. Check `lib/hooks/query-keys.test.tsx` when adding keys. (`client/src/lib/hooks/reviews.ts`)
+- **2026-11-27 — New component tests use `renderWithProviders` from `@/test/render`.** It loads every `messages/en` namespace (as production does), a retry-less QueryClient and ToastProvider, and returns `user` (userEvent). Mock data hooks per module path (`vi.mock("@/lib/hooks/pulls")`) — there is no hooks barrel any more. (`client/src/test/render.tsx`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
@@ -28,6 +30,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
 - **2026-11-21 — Finding status tags are lowercase in the DOM.** Query `accepted`/`dismissed` tags with `/^dismissed$/i`, not `"Dismissed"`, because the messages are lowercase and any uppercase look is styling; `getByText("Dismissed")` fails. (`client/messages/en/prReview.json` › `finding.dismissed`)
+- **2026-11-27 — `Error: Not implemented: window.confirm` in a passing test.** jsdom has no `confirm`; a test reached a confirm it did not stub (e.g. Enter on a focused button inside a `role="button"` header). Stub with `vi.spyOn(window, "confirm").mockReturnValue(…)` and check which element has focus. (`client/src/app/repos/[repoId]/pulls/[number]/_components/ReviewRunAccordion/ReviewRunAccordion.test.tsx`)
 
 ## Session Notes
 <!-- ### YYYY-MM-DD — <task>, then 2–4 lines. -->
@@ -39,6 +42,8 @@ Added `SeverityFilter` (3 severity pills, `aria-pressed`, colours from `SEV`, la
 Added `FindingsPreview` (severity icons → portalled read-only panel) to the Agent runs timeline (`findingsByRun` built in `FindingsTab`) and a new FINDINGS column in the PR list (`PrMeta.latest_findings`). Moved severity helpers to `src/lib/findings-severity.ts`. Spec/plan moved to root `specs/` (now server + client).
 ### 2026-11-26 — Phase 0 client bug fixes
 Finding shortcuts act in one panel only (`useFindingShortcuts` owner stack) and ignore Cmd/Ctrl chords; no double error toasts; trace drawer streams live runs (`running` + `key`); `ConfigTab` reset via `key={agent.id}` instead of an effect. `vendor/shared` synced from the server copy.
+### 2026-11-27 — Refactor F1–F3 (imports, data layer, thin pages)
+`@/` aliases + named exports (F1); key factories + `queryOptions` per domain, `core.ts` split into settings/repos/pulls (F2); PR detail, PR list and agent detail pages became thin entries over `_components/<View>`; `FindingsTab`/`RunHistory` split; `pr-context` replaces 5-level prop drilling (F3). Characterisation tests written first.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

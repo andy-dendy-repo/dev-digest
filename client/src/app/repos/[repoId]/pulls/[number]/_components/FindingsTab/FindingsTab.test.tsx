@@ -16,31 +16,27 @@ vi.mock("@/lib/hooks/reviews", () => ({
 }));
 
 import { FindingsTab } from "./FindingsTab";
+import { PrProvider } from "../pr-context";
 
-type Props = { liveRunIds?: string[]; reviews?: import("@devdigest/shared").ReviewRecord[]; prRuns?: import("@devdigest/shared").RunSummary[] };
+type Props = Partial<React.ComponentProps<typeof FindingsTab>>;
 
 function renderTab(props: Props = {}) {
   const onOpenTrace = vi.fn();
   const onDelete = vi.fn();
   const onRunDone = vi.fn();
-  const live = props.liveRunIds ?? [];
-  const reviews = props.reviews ?? [];
   const utils = renderWithProviders(
+    <PrProvider value={{ prId: "pr-1", repoFullName: "acme/api", headSha: "abc123" }}>
       <FindingsTab
-        prId="pr-1"
-        liveRunIds={live}
-        reviewRunning={live.length > 0}
-        lethalTrifecta={reviews.flatMap((r) => r.findings).filter((f) => f.kind === "lethal_trifecta")}
-        runs={reviews}
-        prRuns={props.prRuns ?? []}
+        liveRunIds={[]}
+        reviews={[]}
+        prRuns={[]}
         prCommits={[]}
-        cancelMutation={{ mutate: cancel, isPending: false } as never}
-        repoFullName="acme/api"
-        headSha="abc123"
         onOpenTrace={onOpenTrace}
         onDelete={onDelete}
         onRunDone={onRunDone}
-      />,
+        {...props}
+      />
+    </PrProvider>,
   );
   return { ...utils, onOpenTrace, onDelete, onRunDone };
 }

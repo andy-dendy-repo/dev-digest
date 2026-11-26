@@ -50,6 +50,14 @@ export const COLUMN_KEYS: string[] = [
   "updated",
 ];
 
+/** Open PRs carry a derived review status; everything else is merged/closed. */
+export const OPEN_STATUSES: ReadonlySet<string> = new Set(["needs_review", "reviewed", "stale"]);
+
+/** Status filter applied when the URL has none: the most actionable one. */
+export const DEFAULT_STATUS_FILTER = "needs_review";
+
+export type PullsSort = "newest" | "oldest";
+
 /** Number of skeleton rows shown while loading. */
 export const SKELETON_ROWS = 4;
 

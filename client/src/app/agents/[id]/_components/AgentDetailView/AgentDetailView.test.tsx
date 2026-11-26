@@ -13,7 +13,6 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ id: "ag1" }),
   useSearchParams: () => h.search,
   useRouter: () => ({ replace: h.replace, push: h.push }),
 }));
@@ -28,7 +27,9 @@ vi.mock("@/lib/hooks/agents", () => ({
   useProviderModels: () => ({ data: [{ id: "gpt-4.1", provider: "openai" }] }),
 }));
 
-import AgentEditorPage from "../../page";
+import { AgentDetailView } from "./AgentDetailView";
+
+const AgentEditorPage = () => <AgentDetailView id="ag1" />;
 
 const AGENT: Agent = {
   id: "ag1",
@@ -52,7 +53,7 @@ beforeEach(() => {
   h.agent = { data: AGENT, isLoading: false, isError: false };
 });
 
-describe("Agent detail page", () => {
+describe("AgentDetailView", () => {
   it("shows the agent's header and its config editor", () => {
     renderWithProviders(<AgentEditorPage />);
     expect(screen.getByRole("heading", { name: "Security Reviewer" })).toBeInTheDocument();

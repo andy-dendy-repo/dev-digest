@@ -10,6 +10,7 @@ vi.mock("@/lib/hooks/reviews", () => ({
 }));
 
 import { ReviewRunAccordion } from "./ReviewRunAccordion";
+import { PrProvider } from "../pr-context";
 
 const REVIEW = review({
   id: "rv1",
@@ -23,7 +24,11 @@ const REVIEW = review({
 });
 
 function renderAccordion(props: Partial<React.ComponentProps<typeof ReviewRunAccordion>> = {}) {
-  return renderWithProviders(<ReviewRunAccordion review={REVIEW} prId="pr-1" {...props} />);
+  return renderWithProviders(
+    <PrProvider value={{ prId: "pr-1", repoFullName: null, headSha: null }}>
+      <ReviewRunAccordion review={REVIEW} {...props} />
+    </PrProvider>,
+  );
 }
 
 beforeEach(() => {

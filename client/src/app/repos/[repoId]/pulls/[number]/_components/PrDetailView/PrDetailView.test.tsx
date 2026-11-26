@@ -18,7 +18,6 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ repoId: "repo-1", number: "482" }),
   useSearchParams: () => h.search,
   useRouter: () => ({ replace: h.replace, push: h.push }),
   usePathname: () => "/repos/repo-1/pulls/482",
@@ -54,7 +53,9 @@ vi.mock("@/lib/hooks/reviews", () => ({
   useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-import PRDetailPage from "../../page";
+import { PrDetailView } from "./PrDetailView";
+
+const PRDetailPage = () => <PrDetailView repoId="repo-1" number="482" />;
 
 const PR: PrDetail = {
   id: "pr-uuid",
@@ -84,7 +85,7 @@ beforeEach(() => {
   h.prRuns = [];
 });
 
-describe("PR detail page", () => {
+describe("PrDetailView", () => {
   it("shows the PR with its description on the overview tab", () => {
     renderWithProviders(<PRDetailPage />);
     expect(screen.getByText("#482")).toBeInTheDocument();

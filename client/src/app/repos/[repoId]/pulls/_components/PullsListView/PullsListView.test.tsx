@@ -12,7 +12,6 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ repoId: "repo-1" }),
   useSearchParams: () => h.search,
   useRouter: () => ({ replace: h.replace, push: h.push }),
 }));
@@ -30,7 +29,9 @@ vi.mock("@/lib/hooks/repos", () => ({
   useRefreshRepo: () => ({ mutate: h.refresh, isPending: false }),
 }));
 
-import PullsPage from "../../page";
+import { PullsListView } from "./PullsListView";
+
+const PullsPage = () => <PullsListView repoId="repo-1" />;
 
 function pr(o: Partial<PrMeta> & { number: number }): PrMeta {
   return {
@@ -65,7 +66,7 @@ beforeEach(() => {
 
 const titles = () => screen.getAllByText(/^(Add rate limiting|Fix login|Bump deps|Old work)$/).map((e) => e.textContent);
 
-describe("PR list page", () => {
+describe("PullsListView", () => {
   it("counts open and needs-review PRs", () => {
     renderWithProviders(<PullsPage />);
     expect(screen.getByText("3 open · 2 need review")).toBeInTheDocument();
