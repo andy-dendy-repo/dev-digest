@@ -1,8 +1,8 @@
 # Examples: current code → target shape
 
-Each "before" below is real code from this repo, recorded as debt in
-`assets/known-violations.json` (or, where marked, debt that has since been fixed
-and is kept as the worked example). Write new code in the "after" shape.
+Each "before" below was real code from this repo. All of it has since been fixed
+(each example says where) and is kept as the worked example. Write new code in the
+"after" shape.
 
 ## 1. Route queries the database (`routes-no-infra`)
 

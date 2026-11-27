@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   extractSymbols,
   extractReferences,
-  extractEndpoints,
-  extractCrons,
 } from '../src/adapters/codeindex/extract.js';
+import { extractEndpoints, extractCrons } from '../src/modules/repo-intel/facts.js';
 
 /**
  * A3 — unit tests for the enhanced TS/JS symbol/reference extractor (L04).

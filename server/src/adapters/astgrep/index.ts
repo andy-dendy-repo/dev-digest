@@ -3,12 +3,14 @@
  *
  * This is the AST-accurate complement to `adapters/codeindex/extract.ts`. The
  * regex extractor stays as the ALWAYS-available fallback; this adapter is the
- * "good path" used by the repo-intel facade (wired by T1.3).
+ * "good path" used by the repo-intel facade, through the `CodeParser` port
+ * (`AstGrepCodeParser` at the bottom of this file, wired in the container).
  *
- * Compatibility baseline: `ParsedSymbol extends ExtractedSymbol` and
- * `ParsedReference extends ExtractedReference`, so any consumer of the
- * degraded path can swap to this adapter without changing field reads. Extras
- * (`exported`, `signature`, `endLine`, `refFile`) sit alongside.
+ * Compatibility baseline: `ParsedSymbol` / `ParsedReference` (declared in
+ * `modules/repo-intel/ports.ts`) are structural supersets of the regex
+ * extractor's `ExtractedSymbol` / `ExtractedReference`, so any consumer of the
+ * degraded path can swap without changing field reads. Extras (`exported`,
+ * `signature`, `endLine`, `refFile`) sit alongside.
  *
  * Method symbols follow the legacy extractor's dual-emit convention: each
  * class method is emitted twice — once qualified (`Class.method`) and once
@@ -21,32 +23,18 @@ import { parse, Lang, type SgNode } from '@ast-grep/napi';
 import { extname, join } from 'node:path';
 import { readContainedFile } from '../../platform/contained-read.js';
 
-import type { ExtractedReference, ExtractedSymbol } from '../codeindex/extract.js';
 import { MAX_SIGNATURE_CHARS, SUPPORTED_EXT } from '../../modules/repo-intel/constants.js';
+import type {
+  CodeParser,
+  ParsedImport,
+  ParsedInvocationHead,
+  ParsedReference,
+  ParsedSymbol,
+} from '../../modules/repo-intel/ports.js';
 
-// ---------------------------------------------------------------------------
-// Public types — superset of the regex extractor's row shapes.
-// ---------------------------------------------------------------------------
-
-export interface ParsedSymbol extends ExtractedSymbol {
-  /** True when the declaration is reached through an `export` form. */
-  exported: boolean;
-  /** Declaration head trimmed to MAX_SIGNATURE_CHARS; null for kinds without one. */
-  signature: string | null;
-  /** 1-based line of the closing token of the declaration body. */
-  endLine: number;
-}
-
-export interface ParsedReference extends ExtractedReference {
-  /** Path passed in by the caller — surfaced so consumers can fan-out. */
-  refFile: string;
-}
-
-export interface ParsedImport {
-  name: string;
-  source: string;
-  isType: boolean;
-}
+// The row shapes are domain types owned by the core (`repo-intel/ports.ts`);
+// re-exported so existing imports of this adapter keep working.
+export type { ParsedImport, ParsedInvocationHead, ParsedReference, ParsedSymbol };
 
 // ---------------------------------------------------------------------------
 // Lang mapping — accepts SUPPORTED_EXT and falls back to null otherwise.
@@ -465,15 +453,6 @@ export function parseReferences(file: string, source: string): ParsedReference[]
 // parseInvocationHeads — T1.3 Phantom-API gate fuel
 // ---------------------------------------------------------------------------
 
-export interface ParsedInvocationHead {
-  /** The bare identifier being invoked (callee name, ctor name, or JSX tag). */
-  name: string;
-  /** 1-based line of the invocation. */
-  line: number;
-  /** Which AST shape produced this head. */
-  kind: 'call' | 'new' | 'jsx';
-}
-
 /**
  * Bare-identifier invocation heads only — the phantom-gate's high-precision
  * input. We DELIBERATELY skip `x.foo()` (member calls) because we can't
@@ -638,4 +617,27 @@ export async function parseChangedFiles(
   }
 
   return { symbols, references, imports };
+}
+
+// ---------------------------------------------------------------------------
+// CodeParser port implementation
+// ---------------------------------------------------------------------------
+
+/** The `CodeParser` port over the functions above (stateless). */
+export class AstGrepCodeParser implements CodeParser {
+  supports(file: string): boolean {
+    return langForFile(file) !== null;
+  }
+  parseSymbols(file: string, source: string): ParsedSymbol[] {
+    return parseSymbols(file, source);
+  }
+  parseReferences(file: string, source: string): ParsedReference[] {
+    return parseReferences(file, source);
+  }
+  parseImports(file: string, source: string): ParsedImport[] {
+    return parseImports(file, source);
+  }
+  parseInvocationHeads(file: string, source: string): ParsedInvocationHead[] {
+    return parseInvocationHeads(file, source);
+  }
 }

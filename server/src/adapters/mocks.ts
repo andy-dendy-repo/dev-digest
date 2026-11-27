@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { CloneReader, WalkResult } from '../modules/repo-intel/ports.js';
 import type {
   LLMProvider,
   ModelInfo,
@@ -357,5 +358,28 @@ export class MockJobQueue implements JobQueue {
     const id = `job-${this.enqueued.length}`;
     const done = this.opts.runJobs && handler ? handler(payload, { jobId: id }) : Promise.resolve();
     return { id, done };
+  }
+}
+
+// ---------- Mock clone reader (repo-intel) ----------
+/**
+ * In-memory `CloneReader`: `files` maps repo-relative paths to contents, for
+ * any clone path. `walk` lists every path (sorted) without the real walk's
+ * extension / size filters; `readFile` returns `null` for unknown paths, like
+ * a refused contained read.
+ */
+export class MockCloneReader implements CloneReader {
+  public reads: string[] = [];
+
+  constructor(private files: Record<string, string> = {}) {}
+
+  async readFile(_clonePath: string, relPath: string): Promise<string | null> {
+    this.reads.push(relPath);
+    return this.files[relPath] ?? null;
+  }
+
+  async walk(_clonePath: string): Promise<WalkResult> {
+    const files = Object.keys(this.files).sort();
+    return { files, stats: { totalCandidates: files.length, skippedTooLarge: 0, bounded: 0 } };
   }
 }

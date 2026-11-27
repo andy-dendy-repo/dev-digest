@@ -41,6 +41,11 @@ export const INDEXER_VERSION = 2;
 // --- [T2] Full-index limits (documented now, enforced in the pipeline) ------
 export const MAX_INDEXED_FILES = 5000;
 export const MAX_FILE_SIZE = 400 * 1024; // 400 KB
+/**
+ * NOT enforced. Parsing is synchronous on the event loop, so a timer cannot
+ * interrupt it (see pipeline/parse-file.ts); a real cap needs a worker thread.
+ * Kept as the documented target for that future change.
+ */
 export const MAX_PARSE_MS_PER_FILE = 2000;
 /** Soft self-watch budget (< JobRunner hard 120s) → finish as `partial`. */
 export const INDEX_SOFT_BUDGET_MS = 110_000;

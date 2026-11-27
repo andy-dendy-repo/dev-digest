@@ -1,5 +1,5 @@
 /**
- * repo-intel pipeline — walk + filter (step 1+2).
+ * clone-reader adapter — walk + filter (repo-intel step 1+2).
  *
  * Walks a clone directory and returns the set of files the parse phase should
  * process, applying:
@@ -17,8 +17,10 @@
  *     so the practical loss is small. TODO(T3): wire `ignore` once we accept
  *     a new dep, OR honor `git ls-files` so we get .gitignore for free.
  *
- * Pure-ish: takes a root path + does fs ops; returns plain data so the caller
- * (full.ts / incremental.ts) can decide what to do with it.
+ * Takes a root path + does fs ops; returns plain data so the caller
+ * (repo-intel full.ts / incremental.ts, via the `CloneReader` port) can decide
+ * what to do with it. Moved out of `modules/repo-intel/pipeline/` (B5): the
+ * core reaches the filesystem only through a port.
  */
 import { readdir, stat } from 'node:fs/promises';
 import type { Dirent } from 'node:fs';
@@ -28,25 +30,13 @@ import {
   MAX_FILE_SIZE,
   MAX_INDEXED_FILES,
   SUPPORTED_EXT,
-} from '../constants.js';
+} from '../../modules/repo-intel/constants.js';
+import type { WalkResult, WalkStats } from '../../modules/repo-intel/ports.js';
+
+export type { WalkResult, WalkStats };
 
 const EXCLUDED_SET: ReadonlySet<string> = new Set(EXCLUDED_DIRS);
 const SUPPORTED_SET: ReadonlySet<string> = new Set(SUPPORTED_EXT);
-
-export interface WalkStats {
-  /** Files seen on disk with a SUPPORTED_EXT extension (before size + bound filters). */
-  totalCandidates: number;
-  /** Candidates dropped because stat().size > MAX_FILE_SIZE. */
-  skippedTooLarge: number;
-  /** Candidates dropped because the file list exceeded MAX_INDEXED_FILES. */
-  bounded: number;
-}
-
-export interface WalkResult {
-  /** Paths relative to `root`, separator-normalized to forward slashes. */
-  files: string[];
-  stats: WalkStats;
-}
 
 /**
  * Recursively walk `root`, returning the file set to parse + a small stats

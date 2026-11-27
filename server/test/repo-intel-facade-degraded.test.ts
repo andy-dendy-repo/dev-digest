@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { RepoIntelService } from '../src/modules/repo-intel/service.js';
-import type { RepoBasics } from '../src/modules/repo-intel/repository.js';
+import type { RepoBasics, RepoIntelStore } from '../src/modules/repo-intel/ports.js';
 import type { IndexState } from '../src/modules/repo-intel/types.js';
+import { AstGrepCodeParser } from '../src/adapters/astgrep/index.js';
+import { FsCloneReader } from '../src/adapters/clone-reader/index.js';
+import { MockGitClient } from '../src/adapters/mocks.js';
 
 /**
  * T1.4 — Facade degraded contract (acceptance #10).
@@ -11,8 +14,8 @@ import type { IndexState } from '../src/modules/repo-intel/types.js';
  * blast, hooks) downgrade to their pre-T1.3 behavior on these returns; if any
  * method threw or returned malformed shape, every consumer would crash.
  *
- * No Postgres, no clone. The service's `repo` (RepoIntelRepository) is patched
- * to return null/[] so we exercise the degraded paths cleanly.
+ * No Postgres, no clone. The service gets a fake `RepoIntelStore` that returns
+ * null/[] so we exercise the degraded paths cleanly.
  */
 
 function buildDegradedService(opts: {
@@ -20,24 +23,24 @@ function buildDegradedService(opts: {
   basics?: RepoBasics | null;
   indexStateRow?: IndexState | null;
 }): RepoIntelService {
-  const container = {
-    config: { repoIntelEnabled: opts.flag },
-    db: {} as never,
+  const store = {
+    getRepoBasics: async () => opts.basics ?? null,
+    tryGetIndexState: async () => opts.indexStateRow ?? null,
+  } as unknown as RepoIntelStore;
+  return new RepoIntelService({
+    store,
+    git: new MockGitClient({}),
     // codeIndex is reached by getBlastRadius; we stub minimal behaviour.
     codeIndex: {
       symbols: async () => [],
       references: async () => [],
-    } as never,
-  } as never;
-  const svc = new RepoIntelService(container);
-  (svc as unknown as { repo: Record<string, unknown> }).repo = {
-    getRepoBasics: async () => opts.basics ?? null,
-    tryGetIndexState: async () => opts.indexStateRow ?? null,
-    getCachedSymbols: async () => [],
-    getCachedSymbolsForFiles: async () => [],
-    getCachedReferencesTo: async () => [],
-  };
-  return svc;
+    },
+    parser: new AstGrepCodeParser(),
+    clone: new FsCloneReader(),
+    depgraph: { buildEdges: async () => [] },
+    tokenizer: { count: (text: string) => Math.ceil(text.length / 4) },
+    enabled: opts.flag,
+  });
 }
 
 describe('RepoIntel facade — degraded contract (flag off)', () => {

@@ -5,12 +5,12 @@
 | Port for… | File | Examples |
 |---|---|---|
 | An external system | `server/src/vendor/shared/adapters.ts` | `LLMProvider`, `GitHubClient`, `GitClient`, `CodeIndex`, `Embedder`, `SecretsProvider`, `AuthProvider`, `JobQueue` |
-| A module's own persistence or a module-specific capability | `server/src/modules/<m>/ports.ts` | `PullsPort`, `SettingsPort`, `ConnectionTester`, `AgentsPort`, `ReposPort`, `ReviewsPort`, `RunsPort`, `PullLookupPort`, `DiffSource`, `ReviewsUnitOfWork`. To move here: `Tokenizer`, `DepGraph` |
+| A module's own persistence or a module-specific capability | `server/src/modules/<m>/ports.ts` | `PullsPort`, `SettingsPort`, `ConnectionTester`, `AgentsPort`, `ReposPort`, `ReviewsPort`, `RunsPort`, `PullLookupPort`, `DiffSource`, `ReviewsUnitOfWork`; repo-intel's `RepoIntelStore`, `CodeParser`, `CloneReader`, `Tokenizer`, `DepGraph` |
 
-A port declared inside `src/adapters/**` (today `Tokenizer` and `DepGraph`) points the
-wrong way: the core has to import the adapter folder to see its own dependency. When
-you touch one, move the interface to the core and leave only the class in
-`src/adapters/`.
+A port declared inside `src/adapters/**` points the wrong way: the core has to import
+the adapter folder to see its own dependency. Declare the interface in the core and
+leave only the class in `src/adapters/` (as `Tokenizer` / `DepGraph` now are: interface
+in `repo-intel/ports.ts`, class in `adapters/tokenizer`, `adapters/depgraph`).
 
 Add a port to the server copy of `vendor/shared/adapters.ts`, then sync the client
 copy (it must stay identical, see [zod.md](zod.md)). The UI uses no ports, but it does
@@ -29,10 +29,11 @@ Each adapter lives in `src/adapters/<name>/` and:
 - has a mock in `src/adapters/mocks.ts` (`MockGitHubClient`, `MockLLMProvider`, …)
   that tests use through `ContainerOverrides`.
 
-Pure helpers that happen to sit in `src/adapters/` today (`codeindex/extract.ts`)
-have no I/O, so they belong in the core. Move such a helper next to its use case (or
-into `domain.ts`) when you next touch it, as `parseUnifiedDiff` moved to
-`modules/reviews/diff.ts` (the git adapter imports it from there: inward). Anything that wraps
+Pure helpers with no I/O belong in the core, even when they started in `src/adapters/`.
+Move such a helper next to its use case (or into `domain.ts`) when you next touch it, as
+`parseUnifiedDiff` moved to `modules/reviews/diff.ts` (the git adapter imports it from
+there: inward) and repo-intel's endpoint/cron extractors moved to `repo-intel/facts.ts`
+(`codeindex/extract.ts` keeps only what the ripgrep adapter uses). Anything that wraps
 a native binary or library with side effects (`@ast-grep/napi`, ripgrep, simple-git,
 js-tiktoken) stays an adapter behind a port.
 
@@ -76,10 +77,10 @@ export class ReviewService {
 }
 ```
 
-Services in `repo-intel` still take `private container: Container`
-(recorded debt); the others take a deps object (see `reviews/ports.ts`
-`ReviewServiceDeps` / `ReviewRunExecutorDeps`, wired in `reviews/routes.ts`
-`createReviewService`). A service
+No service takes `private container: Container` any more: each takes a deps object
+(see `reviews/ports.ts` `ReviewServiceDeps` / `ReviewRunExecutorDeps`, wired in
+`reviews/routes.ts` `createReviewService`, and `repo-intel/ports.ts`
+`RepoIntelServiceDeps`, built in the container). A service
 written that way hides its dependencies, cannot be tested without building a whole
 container, and can reach anything. New services take a deps object. When you
 substantially edit an old one, convert it and regenerate the baseline.

@@ -2,8 +2,8 @@
  * repo-intel pipeline — `runFullIndex`.
  *
  * One-pass full index of a repo. Drives:
- *   1. walk + filter           (pipeline/walk.ts)
- *   2. parse (ast-grep, parallel via p-queue, per-file watchdog) + facts
+ *   1. walk + filter           (CloneReader.walk)
+ *   2. parse (CodeParser, parallel via p-queue) + facts
  *   3. delete-and-rewrite the cached symbols/references for this repo
  *      (idempotent — re-running is safe; UNIQUE constraint guards dup rows)
  *   4. [T3] graph (dependency-cruiser) → resolve decl_file → rank (PageRank)
@@ -18,40 +18,25 @@
  * Option B: rank = PageRank only, hotness=0 (clone is shallow). The T3
  * block is skipped when the soft budget trips, leaving status 'partial'.
  */
-import { createHash } from 'node:crypto';
-import { cpus } from 'node:os';
-import { readContainedFile } from '../../../platform/contained-read.js';
 import PQueue from 'p-queue';
 import type { RepoRef } from '@devdigest/shared';
-import type { Container } from '../../../platform/container.js';
-import { withTimeout } from '../../../platform/resilience.js';
-import { parseSymbols, parseReferences, langForFile } from '../../../adapters/astgrep/index.js';
-import { extractEndpoints, extractCrons } from '../../../adapters/codeindex/extract.js';
-import {
-  DEFAULT_REPO_MAP_TOKEN_BUDGET,
-  INDEX_SOFT_BUDGET_MS,
-  INDEXER_VERSION,
-  MAX_PARSE_MS_PER_FILE,
-} from '../constants.js';
+import { DEFAULT_REPO_MAP_TOKEN_BUDGET, INDEX_SOFT_BUDGET_MS, INDEXER_VERSION } from '../constants.js';
 import type {
   IndexerEdgeRow,
   IndexerFileFactsRow,
   IndexerFileRankRow,
   IndexerReferenceRow,
   IndexerSymbolRow,
-  RepoIntelRepository,
-} from '../repository.js';
+  IndexingDeps,
+  IndexPayload,
+  RepoIntelStore,
+} from '../ports.js';
 import type { IndexResult, IndexStatus } from '../types.js';
-import { walkClone } from './walk.js';
 import { computeFileRank } from './rank.js';
 import { renderRepoMap } from './repo-map.js';
+import { asMessage, parseFileForIndex } from './parse-file.js';
 
-export interface IndexPayload {
-  repoId: string;
-  /** Optional ref hint — when omitted we look up the repo's owner/name from the DB. */
-  owner?: string;
-  name?: string;
-}
+export type { IndexPayload };
 
 /** Per-file parse error captured into `stats.parseDegraded` (capped). */
 interface ParseDegradedEntry {
@@ -69,10 +54,10 @@ const PARSE_DEGRADED_CAP = 50;
  * idempotent on retry.
  */
 export async function runFullIndex(
-  container: Container,
-  repository: RepoIntelRepository,
+  deps: IndexingDeps,
   payload: IndexPayload,
 ): Promise<IndexResult> {
+  const { store: repository, parser, clone } = deps;
   const startedAt = Date.now();
   const repoId = payload.repoId;
 
@@ -94,10 +79,10 @@ export async function runFullIndex(
   }
 
   const ref: RepoRef = { owner: repo.owner, name: repo.name };
-  const currentSha = await safeCurrentHead(container, ref);
+  const currentSha = await safeCurrentHead(deps.git, ref);
 
   // Walk + filter -------------------------------------------------------
-  const walk = await walkClone(repo.clonePath);
+  const walk = await clone.walk(repo.clonePath);
   if (walk.files.length === 0) {
     await safePersist(repository, repoId, currentSha, 'partial', 0, walk.stats.skippedTooLarge, {
       ...walk.stats,
@@ -122,7 +107,7 @@ export async function runFullIndex(
   let filesSkipped = walk.stats.skippedTooLarge;
   let softBudgetReached = false;
 
-  const concurrency = Math.max(1, cpus().length - 1);
+  const concurrency = Math.max(1, deps.parseConcurrency ?? 1);
   const parseQ = new PQueue({ concurrency });
 
   for (const relPath of walk.files) {
@@ -134,14 +119,13 @@ export async function runFullIndex(
     }
 
     void parseQ.add(async () => {
-      const lang = langForFile(relPath);
-      if (!lang) {
+      if (!parser.supports(relPath)) {
         filesSkipped += 1;
         return;
       }
       let source: string;
       try {
-        const contained = await readContainedFile(repo.clonePath!, relPath);
+        const contained = await clone.readFile(repo.clonePath!, relPath);
         if (contained === null) throw new Error('unreadable or outside the clone (symlink?)');
         source = contained;
       } catch (err) {
@@ -149,47 +133,11 @@ export async function runFullIndex(
         recordParseDegraded(parseDegraded, relPath, asMessage(err));
         return;
       }
-      const contentHash = sha1(source);
-      // Per-file watchdog — a single pathological file shouldn't burn the
-      // whole budget. parseSymbols/References are synchronous, so we wrap
-      // them in Promise.resolve and race the timeout.
       try {
-        const parsed = await withTimeout(
-          Promise.resolve().then(() => ({
-            symbols: parseSymbols(relPath, source),
-            references: parseReferences(relPath, source),
-          })),
-          MAX_PARSE_MS_PER_FILE,
-        );
-        for (const s of parsed.symbols) {
-          symbolsBuf.push({
-            repoId,
-            path: relPath,
-            name: s.name,
-            kind: s.kind,
-            line: s.line,
-            endLine: s.endLine,
-            exported: s.exported,
-            signature: s.signature,
-            contentHash,
-          });
-        }
-        for (const r of parsed.references) {
-          refsBuf.push({
-            repoId,
-            fromPath: relPath,
-            toSymbol: r.toSymbol,
-            line: r.line,
-            contentHash,
-          });
-        }
-        // Per-file facts (endpoints/crons) so blast reads from file_facts
-        // instead of re-parsing the clone (T3 blast migration).
-        const endpoints = extractEndpoints(source);
-        const crons = extractCrons(source);
-        if (endpoints.length > 0 || crons.length > 0) {
-          factsBuf.push({ filePath: relPath, endpoints, crons });
-        }
+        const parsed = parseFileForIndex(parser, repoId, relPath, source);
+        symbolsBuf.push(...parsed.symbols);
+        refsBuf.push(...parsed.references);
+        if (parsed.facts) factsBuf.push(parsed.facts);
         filesIndexed += 1;
       } catch (err) {
         filesSkipped += 1;
@@ -210,7 +158,7 @@ export async function runFullIndex(
   let rankRows: IndexerFileRankRow[] = [];
   if (!softBudgetReached) {
     try {
-      const edges = await container.depgraph.buildEdges(repo.clonePath, walk.files);
+      const edges = await deps.depgraph.buildEdges(repo.clonePath, walk.files);
       edgeRows = edges.map((e) => ({ fromFile: e.from, toFile: e.to }));
     } catch (err) {
       graphFailed = asMessage(err);
@@ -249,7 +197,7 @@ export async function runFullIndex(
       // Repo-map render → cache. Drop stale entries (prior SHAs) first. The
       // candidates read sees this transaction's fresh symbols + rank.
       const candidates = await index.getRepoMapCandidates(repoId);
-      const map = renderRepoMap(candidates, container.tokenizer, DEFAULT_REPO_MAP_TOKEN_BUDGET);
+      const map = renderRepoMap(candidates, deps.tokenizer, DEFAULT_REPO_MAP_TOKEN_BUDGET);
       await index.deleteRepoMapCache(repoId);
       if (currentSha) {
         await index.putRepoMapCache(
@@ -305,24 +253,16 @@ function recordParseDegraded(buf: ParseDegradedEntry[], file: string, reason: st
   buf.push({ file, reason });
 }
 
-function asMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-function sha1(s: string): string {
-  return createHash('sha1').update(s).digest('hex');
-}
-
-async function safeCurrentHead(container: Container, ref: RepoRef): Promise<string> {
+async function safeCurrentHead(git: IndexingDeps['git'], ref: RepoRef): Promise<string> {
   try {
-    return await container.git.currentHead(ref);
+    return await git.currentHead(ref);
   } catch {
     return '';
   }
 }
 
 async function safePersist(
-  repository: RepoIntelRepository,
+  repository: RepoIntelStore,
   repoId: string,
   sha: string,
   status: 'partial' | 'degraded',

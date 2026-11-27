@@ -7,6 +7,7 @@ import type {
   Embedder,
   LLMProvider,
 } from '@devdigest/shared';
+import { cpus } from 'node:os';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
 import { JobRunner } from './jobs.js';
@@ -41,9 +42,21 @@ import type { ReposPort } from '../modules/repos/ports.js';
 import { RepoRepository } from '../modules/repos/repository.js';
 import { LiveConnectionTester } from '../adapters/connection-tester.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
+import type {
+  CloneReader,
+  CodeParser,
+  DepGraph,
+  RepoIntelServiceDeps,
+  RepoIntelStore,
+  Tokenizer,
+} from '../modules/repo-intel/ports.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
-import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
-import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { RepoIndexer, type RepoIndexing } from '../modules/repo-intel/indexing.js';
+import { RepoIntelRepository } from '../modules/repo-intel/repository.js';
+import { AstGrepCodeParser } from '../adapters/astgrep/index.js';
+import { FsCloneReader } from '../adapters/clone-reader/index.js';
+import { DepCruiseGraph } from '../adapters/depgraph/index.js';
+import { TiktokenTokenizer } from '../adapters/tokenizer/index.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -99,6 +112,10 @@ export class Container {
   private _reposRepo?: ReposPort;
   private _connectionTester?: ConnectionTester;
   private _repoIntel?: RepoIntel;
+  private _repoIndexer?: RepoIndexing;
+  private _repoIntelStore?: RepoIntelStore;
+  private _codeParser?: CodeParser;
+  private _cloneReader?: CloneReader;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
@@ -165,14 +182,51 @@ export class Container {
   }
 
   /**
-   * The repo-intel facade (T1.1). All higher-level features (reviews,
-   * blast/onboarding migrations, phantom-gate) code against this interface.
+   * The repo-intel facade. All higher-level features (reviews, blast,
+   * onboarding, phantom-gate) code against this interface.
    * Tests inject a mock via `ContainerOverrides.repoIntel`.
    */
   get repoIntel(): RepoIntel {
     if (this.overrides.repoIntel) return this.overrides.repoIntel;
-    this._repoIntel ??= new RepoIntelService(this);
+    this._repoIntel ??= new RepoIntelService(this.repoIntelDeps());
     return this._repoIntel;
+  }
+
+  /**
+   * repo-intel indexing (full / incremental / resync) for the job handlers.
+   * Always the real indexer, even when `overrides.repoIntel` swaps the facade.
+   */
+  get repoIndexer(): RepoIndexing {
+    return (this._repoIndexer ??= new RepoIndexer(this.repoIntelDeps()));
+  }
+
+  /** The repo-intel tables (symbols, references, file_rank, repo_map_cache…). */
+  get repoIntelStore(): RepoIntelStore {
+    return (this._repoIntelStore ??= new RepoIntelRepository(this.db));
+  }
+
+  /** AST parser (@ast-grep/napi) for the indexer and the diff-scoped reads. */
+  get codeParser(): CodeParser {
+    return (this._codeParser ??= new AstGrepCodeParser());
+  }
+
+  /** Contained reads + source walk over the local clones. */
+  get cloneReader(): CloneReader {
+    return (this._cloneReader ??= new FsCloneReader());
+  }
+
+  private repoIntelDeps(): RepoIntelServiceDeps {
+    return {
+      store: this.repoIntelStore,
+      git: this.git,
+      codeIndex: this.codeIndex,
+      parser: this.codeParser,
+      clone: this.cloneReader,
+      depgraph: this.depgraph,
+      tokenizer: this.tokenizer,
+      parseConcurrency: Math.max(1, cpus().length - 1),
+      enabled: this.config.repoIntelEnabled,
+    };
   }
 
   /** Import-graph builder (dependency-cruiser). T3 indexer pipeline only. */

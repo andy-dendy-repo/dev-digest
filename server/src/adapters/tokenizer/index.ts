@@ -9,13 +9,11 @@
  * falls back to the `ceil(chars / 4)` heuristic — the renderer must never throw.
  *
  * Scope: in-process, ONLY under modules/repo-intel. Swappable in tests via a
- * mock counter (ContainerOverrides.tokenizer).
+ * mock counter (ContainerOverrides.tokenizer). The `Tokenizer` port lives in
+ * `modules/repo-intel/ports.ts`.
  */
 import { getEncoding, type Tiktoken } from 'js-tiktoken';
-
-export interface Tokenizer {
-  count(text: string): number;
-}
+import type { Tokenizer } from '../../modules/repo-intel/ports.js';
 
 /** Heuristic fallback used before/instead of a real encoder. */
 export function approxTokens(text: string): number {
