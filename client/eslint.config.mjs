@@ -18,7 +18,9 @@ export default tseslint.config(
   {
     files: ["**/*.{ts,tsx,mjs}"],
     rules: {
-      "no-restricted-imports": [
+      // The typescript-eslint variant: same options as the core rule, plus `allowTypeImports`.
+      "no-restricted-imports": "off",
+      "@typescript-eslint/no-restricted-imports": [
         "error",
         {
           patterns: [
@@ -32,6 +34,12 @@ export default tseslint.config(
             },
           ],
           paths: [
+            {
+              name: "@devdigest/shared",
+              allowTypeImports: true,
+              message:
+                "Only `import type` from @devdigest/shared: its barrel uses `.js` specifiers that Next's webpack cannot resolve (Vitest can, so tests pass and the page breaks).",
+            },
             {
               name: "@/lib/hooks",
               message: "Import the domain file directly, e.g. '@/lib/hooks/reviews' (there is no hooks barrel).",

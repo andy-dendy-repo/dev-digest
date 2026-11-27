@@ -1,0 +1,45 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for ImportSkillModal. */
+export const s = {
+  pick: {
+    border: "1px dashed var(--border-strong)",
+    borderRadius: 10,
+    padding: "28px 20px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 12,
+    textAlign: "center",
+  } satisfies CSSProperties,
+  hint: { fontSize: 13, color: "var(--text-muted)", maxWidth: 520, lineHeight: 1.5 } satisfies CSSProperties,
+  hiddenInput: { display: "none" } satisfies CSSProperties,
+  error: { fontSize: 13, color: "var(--crit)" } satisfies CSSProperties,
+  trust: {
+    display: "flex",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 8,
+    border: "1px solid var(--warn)",
+    background: "var(--warn-bg)",
+    marginBottom: 16,
+    fontSize: 13,
+    lineHeight: 1.5,
+  } satisfies CSSProperties,
+  trustIcon: { color: "var(--warn)", flexShrink: 0, marginTop: 2 } satisfies CSSProperties,
+  trustTitle: { fontWeight: 600, marginBottom: 2 } satisfies CSSProperties,
+  core: { fontSize: 12, color: "var(--text-muted)", marginBottom: 12 } satisfies CSSProperties,
+  bodyBox: {
+    maxHeight: 280,
+    overflow: "auto",
+    padding: "12px 14px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-surface)",
+    fontSize: 13,
+  } satisfies CSSProperties,
+  ignoredTitle: { fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", margin: "16px 0 6px" } satisfies CSSProperties,
+  ignoredList: { margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 } satisfies CSSProperties,
+  ignoredItem: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  footer: { display: "flex", gap: 10, justifyContent: "flex-end", width: "100%" } satisfies CSSProperties,
+} as const;
