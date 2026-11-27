@@ -1,7 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../../../../../../messages/en/settings.json";
+import { screen, cleanup, waitFor } from "@testing-library/react";
+import type { UserEvent } from "@testing-library/user-event";
+import { renderWithProviders } from "@/test/render";
+import settings from "../../../../../../../../messages/en/settings.json";
 import { SettingsApiKeys } from "./SettingsApiKeys";
 
 /** S11 (security hardening) — a verified key leaves the input; a failed one stays for fixing. */
@@ -13,11 +14,7 @@ vi.mock("@/lib/hooks/settings", () => ({
 }));
 
 function renderView() {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ settings: messages }}>
-      <SettingsApiKeys />
-    </NextIntlClientProvider>,
-  );
+  return renderWithProviders(<SettingsApiKeys />);
 }
 
 afterEach(() => {
@@ -25,18 +22,18 @@ afterEach(() => {
   mutateAsync.mockReset();
 });
 
-async function typeAndTest(value: string) {
-  const input = screen.getAllByPlaceholderText(messages.apiKeys.placeholder)[0] as HTMLInputElement;
-  fireEvent.change(input, { target: { value } });
-  fireEvent.click(screen.getAllByRole("button", { name: messages.apiKeys.testConnection })[0]!);
+async function typeAndTest(user: UserEvent, value: string) {
+  const input = screen.getAllByPlaceholderText(settings.apiKeys.placeholder)[0] as HTMLInputElement;
+  await user.type(input, value);
+  await user.click(screen.getAllByRole("button", { name: settings.apiKeys.testConnection })[0]!);
   return input;
 }
 
 describe("SettingsApiKeys", () => {
   it("clears the input after the key is verified and saved", async () => {
     mutateAsync.mockResolvedValue({ provider: "openai", ok: true, message: "OK — 3 models available" });
-    renderView();
-    const input = await typeAndTest("sk-new");
+    const { user } = renderView();
+    const input = await typeAndTest(user, "sk-new");
     await screen.findByText("OK — 3 models available");
     expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ key: "sk-new" }));
     await waitFor(() => expect(input.value).toBe(""));
@@ -44,8 +41,8 @@ describe("SettingsApiKeys", () => {
 
   it("keeps the input when the check fails, so the typo can be fixed", async () => {
     mutateAsync.mockResolvedValue({ provider: "openai", ok: false, message: "401 — key not saved" });
-    renderView();
-    const input = await typeAndTest("sk-typo");
+    const { user } = renderView();
+    const input = await typeAndTest(user, "sk-typo");
     await screen.findByText("401 — key not saved");
     expect(input.value).toBe("sk-typo");
   });

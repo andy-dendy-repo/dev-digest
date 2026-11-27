@@ -1,8 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
 import type { FindingRecord } from "@devdigest/shared";
-import messages from "../../../../../../../../messages/en/prReview.json";
 import { FindingCard } from "./FindingCard";
 
 afterEach(cleanup);
@@ -26,13 +25,7 @@ const FINDING: FindingRecord = {
   dismissed_at: null,
 };
 
-function renderWithIntl(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      {ui}
-    </NextIntlClientProvider>,
-  );
-}
+const renderWithIntl = (ui: React.ReactElement) => renderWithProviders(ui);
 
 describe("FindingCard (smoke, both themes)", () => {
   (["dark", "light"] as const).forEach((theme) => {
@@ -49,12 +42,12 @@ describe("FindingCard (smoke, both themes)", () => {
     });
   });
 
-  it("fires accept/dismiss actions", () => {
+  it("fires accept/dismiss actions", async () => {
     const onAction = vi.fn();
-    renderWithIntl(<FindingCard f={FINDING} defaultExpanded onAction={onAction} />);
-    fireEvent.click(screen.getByText("Accept"));
+    const { user } = renderWithIntl(<FindingCard f={FINDING} defaultExpanded onAction={onAction} />);
+    await user.click(screen.getByRole("button", { name: "Accept" }));
     expect(onAction).toHaveBeenCalledWith("accept");
-    fireEvent.click(screen.getByText("Dismiss"));
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(onAction).toHaveBeenCalledWith("dismiss");
   });
 });

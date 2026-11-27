@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Button, Icon, Modal } from "@devdigest/ui";
 import { s } from "../../styles";
 import { PromptModalBody } from "../PromptModalBody";
+import { useCopyToClipboard } from "../../useCopyToClipboard";
 
 const miniBtnStyle: React.CSSProperties = {
   display: "inline-flex",
@@ -24,12 +25,8 @@ export function PromptBlock({ label, text, color }: { label: string; text: strin
   const t = useTranslations("runs");
   const [open, setOpen] = React.useState(false);
   const [full, setFull] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
-  const copy = () => {
-    void navigator.clipboard?.writeText(text || "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
-  };
+  const { copied, copy: copyText } = useCopyToClipboard(1200);
+  const copy = () => copyText(text || "");
   return (
     <div style={s.promptRow}>
       <div onClick={() => setOpen((o) => !o)} style={s.promptHead}>

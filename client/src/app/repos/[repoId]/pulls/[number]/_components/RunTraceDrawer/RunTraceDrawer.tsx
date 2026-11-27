@@ -14,6 +14,7 @@ import { DRAWER_WIDTH, LOG_HEIGHT, TABS } from "./constants";
 import { eventsToLog, traceLog } from "../run-log";
 import { s } from "./styles";
 import { TraceBody } from "./_components/TraceBody";
+import { useCopyToClipboard } from "./useCopyToClipboard";
 
 export interface RunTraceDrawerProps {
   runId: string;
@@ -49,12 +50,9 @@ export function RunTraceDrawer({
 
   // Copy the model's raw output to the clipboard (footer button), with a brief
   // visual confirmation. Disabled until the trace (and its raw output) loads.
-  const [rawCopied, setRawCopied] = React.useState(false);
+  const { copied: rawCopied, copy } = useCopyToClipboard(1500);
   const copyRaw = () => {
-    if (!trace?.raw_output) return;
-    void navigator.clipboard?.writeText(trace.raw_output);
-    setRawCopied(true);
-    setTimeout(() => setRawCopied(false), 1500);
+    if (trace?.raw_output) copy(trace.raw_output);
   };
 
   const log: LogLine[] = eventsToLog(events);

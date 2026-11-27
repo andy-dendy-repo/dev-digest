@@ -18,7 +18,7 @@ function renderBadge(props: {
   variant?: RunCostBadgeVariant;
 }) {
   renderWithProviders(<RunCostBadge {...props} />);
-  return screen.getByTestId("run-cost");
+  return screen.getByTitle(/^Run cost/);
 }
 
 describe("RunCostBadge — variants", () => {

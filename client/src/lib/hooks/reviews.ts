@@ -155,11 +155,14 @@ export function useFindingAction() {
  * Subscribe to a run's SSE event stream. Returns the accumulated RunEvents and a
  * `running` flag (true until the stream closes). Live status for the
  * RunReviewDropdown / Live Log. Multiple runIds are subscribed in parallel.
+ * `onSettled` fires once when every stream has closed (runs done or failed).
  */
-export function useRunEvents(runIds: string[]) {
+export function useRunEvents(runIds: string[], { onSettled }: { onSettled?: () => void } = {}) {
   const [events, setEvents] = React.useState<RunEvent[]>([]);
   const [running, setRunning] = React.useState(false);
   const key = runIds.join(",");
+  // Always the latest callback, without re-subscribing when it changes.
+  const settled = React.useEffectEvent(() => onSettled?.());
 
   React.useEffect(() => {
     if (runIds.length === 0) return;
@@ -191,7 +194,10 @@ export function useRunEvents(runIds: string[]) {
       es.onerror = () => {
         es.close();
         open -= 1;
-        if (open <= 0) setRunning(false);
+        if (open === 0) {
+          setRunning(false);
+          settled();
+        }
       };
       sources.push(es);
     }

@@ -4,10 +4,9 @@
  * must not bubble to a clickable parent (a PR list row navigates).
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { screen, cleanup, within } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../messages/en/prReview.json";
 import { FindingsPreview } from "./FindingsPreview";
 import type { FindingPreviewItem } from "./helpers";
 
@@ -34,13 +33,11 @@ const FINDINGS = [
 ];
 
 function renderPreview(findings: FindingPreviewItem[], onParentClick = vi.fn()) {
-  render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <div onClick={onParentClick}>
+  renderWithProviders(
+    <div onClick={onParentClick}>
         <FindingsPreview findings={findings} />
         <span>outside</span>
-      </div>
-    </NextIntlClientProvider>,
+      </div>,
   );
   return onParentClick;
 }

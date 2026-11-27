@@ -37,6 +37,6 @@ describe("VerdictBanner (smoke)", () => {
         cost={{ costUsd: 0.014, tokensIn: 8210, tokensOut: 1290 }}
       />,
     );
-    expect(screen.getByTestId("run-cost")).toHaveTextContent("$0.014 · 8.2K→1.3K");
+    expect(screen.getByTitle(/^Run cost/)).toHaveTextContent("$0.014 · 8.2K→1.3K");
   });
 });

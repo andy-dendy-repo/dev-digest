@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
@@ -30,13 +30,6 @@ export function PrDetailHeader({
   onRunsStarted,
 }: PrDetailHeaderProps) {
   const t = useTranslations("prReview");
-  const handleRunStart = useCallback(() => {
-    onRunStart();
-  }, [onRunStart]);
-
-  const handleRunsStarted = useCallback(() => {
-    onRunsStarted();
-  }, [onRunsStarted]);
 
   const statusColor =
     pr.status === "merged"
@@ -95,8 +88,8 @@ export function PrDetailHeader({
             <RunReviewDropdown
               prId={prId}
               warnMerged={pr.status === "merged" || pr.status === "closed"}
-              onRunStart={handleRunStart}
-              onRunsStarted={handleRunsStarted}
+              onRunStart={onRunStart}
+              onRunsStarted={onRunsStarted}
             />
           )}
         </div>

@@ -63,6 +63,8 @@ export const s = {
   deleteBtn: {
     display: "inline-flex",
     padding: 3,
+    border: "none",
+    background: "none",
     borderRadius: 5,
     color: "var(--text-muted)",
     flexShrink: 0,

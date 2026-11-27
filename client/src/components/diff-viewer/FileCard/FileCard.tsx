@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile } from "@/lib/types";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
-import { parsePatch, type Line } from "../helpers";
+import { lineReactKey, parsePatch, type Line } from "../helpers";
 import {
   buildThreads,
   keysForLine,
@@ -78,9 +78,9 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
           {lines.length === 0 ? (
             <div style={s.noDiff}>{t("diffViewer.noDiffText")}</div>
           ) : (
-            lines.map((ln, i) => (
+            lines.map((ln) => (
               <CodeLine
-                key={i}
+                key={lineReactKey(ln)}
                 ln={ln}
                 path={file.path}
                 threads={threadsForLine(ln, matched)}

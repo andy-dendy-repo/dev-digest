@@ -1,9 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import messages from "../../../../../../../../messages/en/prReview.json";
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
 vi.mock("@/lib/hooks/reviews", () => ({
@@ -54,11 +53,9 @@ const ALL_TITLES = FINDINGS.map((f) => f.title);
 
 function ui(findings: FindingRecord[]) {
   return (
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <PrProvider value={PR}>
+    <PrProvider value={PR}>
         <FindingsPanel findings={findings} />
       </PrProvider>
-    </NextIntlClientProvider>
   );
 }
 
@@ -72,13 +69,13 @@ const expectTitles = (visible: string[]) => {
 
 describe("FindingsPanel", () => {
   it("renders the toolbar + a finding card", () => {
-    render(ui(FINDINGS.slice(0, 1)));
+    renderWithProviders(ui(FINDINGS.slice(0, 1)));
     expect(screen.getByText("Hide low confidence")).toBeInTheDocument();
     expect(screen.getByText("Hardcoded secret")).toBeInTheDocument();
   });
 
   it("shows the empty state when nothing matches", () => {
-    render(ui([]));
+    renderWithProviders(ui([]));
     expect(screen.getByText("No findings match")).toBeInTheDocument();
     // A level without findings still renders its counter as 0.
     expect(counter(/^0 critical$/i)).toBeInTheDocument();
@@ -87,7 +84,7 @@ describe("FindingsPanel", () => {
   it("counts findings per severity and filters by a single severity without any request", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const user = userEvent.setup();
-    render(ui(FINDINGS));
+    renderWithProviders(ui(FINDINGS));
 
     expect(screen.getByRole("group", { name: "Filter by severity" })).toBeInTheDocument();
     for (const name of [/^1 critical$/i, /^3 warning$/i, /^1 suggestion$/i]) {
@@ -115,7 +112,7 @@ describe("FindingsPanel", () => {
 
   it("combines with Hide low confidence and shows the empty state for an emptied level", async () => {
     const user = userEvent.setup();
-    render(ui(FINDINGS));
+    renderWithProviders(ui(FINDINGS));
 
     await user.click(screen.getByRole("switch"));
     // Counters follow the confidence filter, so they always match the list.
@@ -133,7 +130,7 @@ describe("FindingsPanel", () => {
 
   it("keeps counters and the active filter in sync when findings refresh after a dismiss", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(ui(FINDINGS));
+    const { rerender } = renderWithProviders(ui(FINDINGS));
 
     await user.click(counter(/3 warning/i));
 
@@ -154,8 +151,8 @@ describe("FindingsPanel — keyboard shortcuts", () => {
   const TWO = [finding("p2-f", "WARNING", "Panel two finding", 0.95)];
 
   function twoPanels() {
-    return render(
-      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+    return renderWithProviders(
+      <>
         <div data-testid="panel-one">
           <PrProvider value={PR}>
             <FindingsPanel findings={ONE} />
@@ -166,13 +163,13 @@ describe("FindingsPanel — keyboard shortcuts", () => {
             <FindingsPanel findings={TWO} />
           </PrProvider>
         </div>
-      </NextIntlClientProvider>,
+      </>,
     );
   }
 
   it("`a` accepts the focused finding", async () => {
     const user = userEvent.setup();
-    render(ui(FINDINGS));
+    renderWithProviders(ui(FINDINGS));
     await user.keyboard("a");
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(mutate).toHaveBeenCalledWith({ findingId: "c1", action: "accept", prId: "pr1" });
@@ -198,7 +195,7 @@ describe("FindingsPanel — keyboard shortcuts", () => {
 
   it("ignores browser chords such as Cmd/Ctrl+A and Ctrl+D", async () => {
     const user = userEvent.setup();
-    render(ui(FINDINGS));
+    renderWithProviders(ui(FINDINGS));
     await user.keyboard("{Meta>}a{/Meta}{Control>}a{/Control}{Control>}d{/Control}{Alt>}d{/Alt}");
     expect(mutate).not.toHaveBeenCalled();
   });

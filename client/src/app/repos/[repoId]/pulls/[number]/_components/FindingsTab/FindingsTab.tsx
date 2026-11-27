@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { SectionLabel, EmptyState } from "@devdigest/ui";
 import type { ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import { RunHistory } from "../RunHistory";
-import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { ReviewRunAccordion, type ReviewRunAccordionHandle } from "../ReviewRunAccordion";
 import { findingsByRun, lethalTrifectaFindings, runsById } from "./helpers";
 import { LiveRunSection } from "./LiveRunSection";
 import { LethalTrifectaBanner } from "./LethalTrifectaBanner";
@@ -39,10 +39,9 @@ export function FindingsTab({
   const runById = runsById(runs);
 
   // Timeline → Review-runs navigation: clicking an agent name in the timeline
-  // opens + scrolls to that run's accordion below. The nonce re-triggers the
-  // scroll even when the same run is clicked twice.
-  const [target, setTarget] = React.useState<{ runId: string; n: number } | null>(null);
-  const goToReview = (runId: string) => setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
+  // opens + scrolls to that run's accordion below (an event, not an effect).
+  const accordions = React.useRef(new Map<string, ReviewRunAccordionHandle>());
+  const goToReview = (runId: string) => accordions.current.get(runId)?.reveal();
 
   return (
     <section>
@@ -86,8 +85,14 @@ export function FindingsTab({
               review={review}
               run={review.run_id ? runById.get(review.run_id) : undefined}
               defaultOpen={i === 0}
-              targetRunId={target?.runId ?? null}
-              targetNonce={target?.n ?? 0}
+              ref={(handle) => {
+                const runId = review.run_id;
+                if (!runId || !handle) return;
+                accordions.current.set(runId, handle);
+                return () => {
+                  accordions.current.delete(runId);
+                };
+              }}
             />
           ))}
     </section>
