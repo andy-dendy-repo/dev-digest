@@ -163,3 +163,4 @@ These were looked at during research and left out. The reasons are in
 |---|---|---|
 | 1.0.0 | 2026-11-26 | First version: research on 40 sources and house decisions settled with the maintainer |
 | 1.0.1 | 2026-11-26 | After the first eval run: unit letters in formatted labels go through next-intl; client tasks stay inside `client/`; don't add lines to existing `export *` barrels |
+| 1.1.0 | 2026-11-27 | After the architecture refactor (F1–F7): "Known deviations" removed (all fixed); every query uses key factories + `queryOptions`; new "Enforced by lint" section (`pnpm lint` in CI) |

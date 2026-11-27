@@ -26,7 +26,7 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 
 | Suite | Package | Kind | Runner | Workflow | Docker? |
 |-------|---------|------|--------|----------|---------|
-| client | `client/` | component / unit (jsdom) | vitest | `client.yml` | no |
+| client | `client/` | component / unit (jsdom) + ESLint (`pnpm lint`) | vitest, eslint | `client.yml` | no |
 | server-unit | `server/` | unit (hermetic) | vitest | `server-unit.yml` | no |
 | server-integration | `server/` | integration (real Postgres) | vitest | `server-integration.yml` | **yes** |
 | reviewer-core | `reviewer-core/` | unit (engine) | vitest | `reviewer-core.yml` | no |
@@ -61,7 +61,7 @@ No `chat`, no model key.
 
 ```sh
 # per package
-cd client        && pnpm test           # + pnpm typecheck
+cd client        && pnpm test           # + pnpm typecheck, pnpm lint
 cd reviewer-core && npm test
 
 # server — the unit/integration split (see note below)
