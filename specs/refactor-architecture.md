@@ -1,5 +1,5 @@
 # Refactor — Architecture alignment (onion backend, frontend UI architecture)
-**Status:** in progress
+**Status:** done (PRs open for review, 2026-11-27)
 **Affected modules:** server · client · reviewer-core · CI
 
 ## Goal
@@ -64,6 +64,46 @@ Each PR is based on the previous one in its stack. After every backend PR the
 - [ ] Backend: layer check passes with an empty (or near-empty, justified) baseline.
 - [ ] Client: no `export *` outside `@devdigest/ui`, no deep relative imports into
       `lib/`/`components/`, all queries keyed via factories, pages are thin.
+
+## Result
+
+| Stack | PRs (each stacked on the previous) |
+|---|---|
+| Foundation | #9 P0/P1 |
+| Backend | #13 B1 → #14 B2 → #16 B3 → #19 B4 → #21 B5 → #23 B6 → B7 cleanup (NUL separators, this status) |
+| Frontend | #11 F1 → #12 F2 → #15 F3 → #17 F4 → #18 F5 → #20 F6 → #22 F7 → #24 F8 docs |
+
+Merge order: #9, then either stack. The two stacks merge into each other without conflicts
+(verified on a local integration of B6 + F7).
+
+Verified on the integration of both stacks:
+
+| Check | Before (main) | After |
+|---|---|---|
+| Layer check, known violations | 58 | **0** (`known-violations.json` is `[]`) |
+| client tests | 72 | 180, plus ESLint and `next build` |
+| reviewer-core tests | 23 | 30 |
+| server tests (unit + integration) | 209 | 289; test files type-check |
+| Browser e2e | 7/7 | 7/7 |
+| Screenshots of 9 screens in both themes vs main | — | pixel-identical except the new branded 404 page |
+
+Bugs fixed along the way: job failure crashing the API, unfenced PR title/author in the
+prompt, close-tag escape, raw error messages in 500s and in `agent_runs.error`, polling
+`opened_at`, 7 non-atomic multi-write flows, foreign-workspace access to runs and repo
+index state, finding shortcuts acting in every panel, double error toasts, trace drawer not
+streaming live runs, accordion delete key toggling the accordion.
+
+### Follow-ups (after both stacks are merged)
+- Client: use the shared `ActiveRun` contract (added in B6) instead of the local interface in
+  `client/src/lib/hooks`; consider shared contracts for `RepoIntelState` and the agent inputs.
+- Server: response schemas for `GET/PUT /settings`, `GET /runs/:id/trace`,
+  `GET /repos/:id/index-state` (contract/data mismatches listed in #23).
+- Server: DB errors outside a unit of work can still reach `agent_runs.error` as raw drizzle
+  text (params are only ids).
+- Callers digest from the persisted index (see Notes).
+- Client: ~28 small inline styles; two toasts built outside React are not translated.
+- Integration tests need `TESTCONTAINERS_RYUK_DISABLED=true` on hosts where Ryuk loses the
+  port race (see `server/INSIGHTS.md`).
 
 ## Notes
 - Audit and phase-0 details: PR "fix: phase 0 bugs" and `INSIGHTS.md` session notes.
