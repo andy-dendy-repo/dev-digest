@@ -85,6 +85,13 @@
       "when": 1795730770954,
       "tag": "0011_lethal_gwen_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795787292650,
+      "tag": "0012_deep_luckman",
+      "breakpoints": true
     }
   ]
 }

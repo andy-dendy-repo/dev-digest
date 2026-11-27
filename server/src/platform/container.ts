@@ -26,6 +26,8 @@ import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import type { AgentsPort } from '../modules/agents/ports.js';
+import { SkillsRepository } from '../modules/skills/repository.js';
+import type { SkillsPort } from '../modules/skills/ports.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import type {
   PullLookupPort,
@@ -105,6 +107,7 @@ export class Container {
   // runs). Constructed here, in the composition root, so consuming modules use
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsPort;
+  private _skillsRepo?: SkillsPort;
   private _reviewRepo?: ReviewStore;
   private _reviewsUow?: ReviewsUnitOfWork;
   private _pullsRepo?: PullsPort;
@@ -139,6 +142,10 @@ export class Container {
 
   get agentsRepo(): AgentsPort {
     return (this._agentsRepo ??= new AgentsRepository(this.db));
+  }
+
+  get skillsRepo(): SkillsPort {
+    return (this._skillsRepo ??= new SkillsRepository(this.db));
   }
 
   get reviewRepo(): ReviewStore {

@@ -32,8 +32,8 @@ export interface StoredAgentVersion {
   createdAt: Date;
 }
 
-/** Map a stored agent to the public `Agent` DTO. */
-export function toAgentDto(row: StoredAgent): Agent {
+/** Map a stored agent to the public `Agent` DTO (`skillCount` = effective skills). */
+export function toAgentDto(row: StoredAgent, skillCount?: number): Agent {
   return {
     id: row.id,
     name: row.name,
@@ -47,6 +47,7 @@ export function toAgentDto(row: StoredAgent): Agent {
     strategy: row.strategy as ReviewStrategy,
     ci_fail_on: row.ciFailOn as CiFailOn,
     repo_intel: row.repoIntel,
+    ...(skillCount !== undefined ? { skill_count: skillCount } : {}),
   };
 }
 

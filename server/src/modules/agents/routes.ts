@@ -1,7 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { Agent, AgentSkillLink, AgentVersion, ModelInfo, Provider } from '@devdigest/shared';
+import {
+  Agent,
+  AgentSkillLink,
+  AgentSkillView,
+  AgentVersion,
+  ModelInfo,
+  Provider,
+  SetAgentSkillsRequest,
+} from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams, OkResponse } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
@@ -25,8 +33,9 @@ const VersionParams = z.object({
  *   PUT    /agents/:id              → update / toggle enabled (versions config)
  *   GET    /agents/:id/versions     → config history (newest first)
  *   GET    /agents/:id/versions/:version → one config snapshot
- *   GET    /agents/:id/skills       → linked skills (ordered)
- *   POST   /agents/:id/skills       → set/reorder linked skills OR link one
+ *   GET    /agents/:id/skills       → linked skills (ordered, with name/type/flags)
+ *   PUT    /agents/:id/skills       → replace the ordered list [{skill_id, enabled}]
+ *   POST   /agents/:id/skills       → (legacy) set/reorder linked skills OR link one
  *   GET    /agents/:id/models       → dynamic model list for the agent's provider
  *   GET    /providers/:id/models    → dynamic model list for a provider (editor)
  */
@@ -111,12 +120,29 @@ export default async function agentsRoutes(appBase: FastifyInstance) {
 
   app.get(
     '/agents/:id/skills',
-    { schema: { params: IdParams, response: { 200: z.array(AgentSkillLink) } } },
+    { schema: { params: IdParams, response: { 200: z.array(AgentSkillView) } } },
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
-      const agent = await service.get(workspaceId, req.params.id);
-      if (!agent) throw new NotFoundError('Agent not found');
-      return service.skillLinks(req.params.id);
+      const views = await service.skillViews(workspaceId, req.params.id);
+      if (!views) throw new NotFoundError('Agent not found');
+      return views;
+    },
+  );
+
+  app.put(
+    '/agents/:id/skills',
+    {
+      schema: {
+        params: IdParams,
+        body: SetAgentSkillsRequest,
+        response: { 200: z.array(AgentSkillView) },
+      },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      const views = await service.replaceSkills(workspaceId, req.params.id, req.body);
+      if (!views) throw new NotFoundError('Agent not found');
+      return views;
     },
   );
 

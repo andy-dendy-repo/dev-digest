@@ -4,7 +4,7 @@
  * truncation, and ordering (before the diff).
  */
 import { describe, it, expect } from 'vitest';
-import { assemblePrompt, wrapUntrusted } from '../src/prompt.js';
+import { assemblePrompt, formatSkillBlock, wrapUntrusted } from '../src/prompt.js';
 
 function userOf(parts: Parameters<typeof assemblePrompt>[0]): string {
   const { messages } = assemblePrompt(parts);
@@ -86,5 +86,29 @@ describe('wrapUntrusted — delimiter escape', () => {
     expect(wrapUntrusted('diff', 'a < b && c > d')).toBe(
       '<untrusted source="diff">\na < b && c > d\n</untrusted>',
     );
+  });
+});
+
+describe('assemblePrompt — ## Skills / rules (M2)', () => {
+  const a = formatSkillBlock({ name: 'test-corner-cases', description: 'Flag\n missing edge cases.', body: '# Rule\nCheck empty input.\n' });
+  const b = formatSkillBlock({ name: 'test-mock-discipline', description: 'Flag over-mocking.', body: 'Mock only I/O.' });
+
+  it('renders a skill as name heading, one-line description quote, then the body', () => {
+    expect(a).toBe('### test-corner-cases\n> Flag missing edge cases.\n\n# Rule\nCheck empty input.');
+  });
+
+  it('keeps the given order, after the PR description and before the diff', () => {
+    const { messages, assembly } = assemblePrompt({ system: 's', diff: 'DIFF', prDescription: 'PR', skills: [b, a] });
+    const user = messages[1]!.content;
+    expect(user.indexOf('## Skills / rules')).toBeGreaterThan(user.indexOf('## PR description'));
+    expect(user.indexOf('test-mock-discipline')).toBeLessThan(user.indexOf('test-corner-cases'));
+    expect(user.indexOf('test-corner-cases')).toBeLessThan(user.indexOf('## Diff to review'));
+    expect(assembly.skills).toBe(`${b}\n\n${a}`);
+  });
+
+  it('omits the section and records null when no skill is enabled', () => {
+    const { messages, assembly } = assemblePrompt({ system: 's', diff: 'DIFF', skills: [] });
+    expect(messages[1]!.content).not.toContain('## Skills / rules');
+    expect(assembly.skills).toBeNull();
   });
 });
