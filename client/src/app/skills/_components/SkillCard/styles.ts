@@ -55,6 +55,16 @@ export const s = {
   metaRow: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } satisfies CSSProperties,
   source: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   stats: { marginLeft: "auto", fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  toggleLabel: { display: "inline-flex", position: "relative" } satisfies CSSProperties,
+  /** Visually hidden, still read by screen readers. */
+  srOnly: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
   deleteBtn: (busy: boolean): CSSProperties => ({
     background: "none",
     border: "none",

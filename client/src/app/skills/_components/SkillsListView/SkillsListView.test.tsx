@@ -64,7 +64,7 @@ describe("SkillsListView", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { user } = renderWithProviders(<SkillsListView />);
     const imported = screen.getAllByTestId("skill-card")[1]!;
-    await user.click(within(imported).getByRole("switch"));
+    await user.click(within(imported).getByRole("switch", { name: "Enable phantom-api-gate for all agents" }));
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("was imported from someone else"));
     expect(h.update).not.toHaveBeenCalled();
 

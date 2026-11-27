@@ -131,6 +131,9 @@ export function useSetAgentSkills(agentId: string) {
   const qc = useQueryClient();
   const key = agentKeys.skills(agentId);
   return useMutation({
+    // Saves for one agent run one after another, so an earlier response can't
+    // overwrite the optimistic state of a later click.
+    scope: { id: `agent-skills-${agentId}` },
     mutationFn: (next: AgentSkillView[]) => {
       const body: SetAgentSkillsRequest = {
         skills: next.map((v) => ({ skill_id: v.skill_id, enabled: v.enabled })),

@@ -1,0 +1,22 @@
+{
+  "name": "Skills page lists seeded skills; the agent Skills tab shows attached skills",
+  "description": "Loads /skills and confirms seeded skills render (pr-quality-rubric, Test Quality skills), opens a skill in the editor (Config tab), then opens Security Reviewer's Skills tab and confirms the '3 of 10 enabled' badge. Exercises the M2 Skills routes, SkillCard, SkillEditor and the agent SkillsTab. Read-only seeded data (no model call, nothing saved).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/skills"], "label": "load the skills page" },
+    { "cmd": ["wait", "--url", "/skills"], "label": "skills route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "skills fetch settles" },
+    { "cmd": ["wait", "--text", "pr-quality-rubric"], "label": "seeded design skill card is visible" },
+    { "cmd": ["wait", "--text", "test-branch-coverage"], "label": "seeded Test Quality skill card is visible" },
+    { "cmd": ["find", "text", "pr-quality-rubric", "click"], "label": "open the skill" },
+    { "cmd": ["wait", "--url", "tab=config"], "label": "skill editor route reached (Config tab)" },
+    { "cmd": ["wait", "--text", "Configuration"], "label": "the Config tab renders" },
+    { "cmd": ["wait", "--text", "The skill's interface"], "label": "the description hint asks for a directive" },
+    { "cmd": ["open", "{BASE}/agents"], "label": "load the agents page" },
+    { "cmd": ["wait", "--text", "Test Quality Reviewer"], "label": "the new agent is seeded" },
+    { "cmd": ["find", "text", "Security Reviewer", "click"], "label": "open Security Reviewer" },
+    { "cmd": ["wait", "--url", "tab=config"], "label": "agent editor route reached" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Skills"], "label": "switch to the Skills tab" },
+    { "cmd": ["wait", "--url", "tab=skills"], "label": "skills tab is active in the URL" },
+    { "cmd": ["wait", "--text", "3 of 10 enabled"], "label": "Security Reviewer runs 3 of the 10 workspace skills" }
+  ]
+}

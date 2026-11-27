@@ -28,5 +28,5 @@ Missing: a `skills` module, the `/skills` UI, the agent *Skills* tab, the execut
 3. `feat/m2-skills-prompt` — executor loads skills, run log line, trace `section_tokens` / `skills_detail`, trace drawer shows them.
 4. `feat/m2-skills-ui` — nav, `/skills`, `/skills/:id` (Config + Preview), create + import modals.
 5. `feat/m2-skills-agent-tab` — agent *Skills* tab, card badge.
-6. `feat/m2-skills-seed` — Test Quality Reviewer, seeded skills, `examples/skills/flaky-test-patterns(.zip)`, e2e flow 08, pr-self-review `disable-model-invocation`.
+6. `feat/m2-skills-seed` — Test Quality Reviewer, seeded skills, `examples/skills/flaky-test-patterns(.zip)`, e2e flow 08.
 7. Demo branches + `docs/skills-experiment.md`.

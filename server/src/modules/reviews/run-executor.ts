@@ -418,11 +418,6 @@ export class ReviewRunExecutor implements RunExecutor {
     }
   }
 
-  /**
-   * A minimal RunTrace whose `log` is the run's full SSE buffer — persisted on
-   * failure/cancel (and pre-work failures) so the events (and WHY it failed)
-   * survive a reload, not just the in-memory stream.
-   */
   /** Load + render the agent's effective skills and log them as one line. */
   private async loadSkills(
     agent: Agent,
@@ -465,6 +460,11 @@ export class ReviewRunExecutor implements RunExecutor {
     };
   }
 
+  /**
+   * A minimal RunTrace whose `log` is the run's full SSE buffer — persisted on
+   * failure/cancel (and pre-work failures) so the events (and WHY it failed)
+   * survive a reload, not just the in-memory stream.
+   */
   private traceFromBuffer(
     runId: string,
     pull: ReviewPull,
