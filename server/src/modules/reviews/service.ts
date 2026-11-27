@@ -1,8 +1,7 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
+import type { Agent, FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
-import type { AgentRow } from '../../db/rows.js';
-import { ReviewRepository } from './repository.js';
+import type { ReviewRepository } from './repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
@@ -31,7 +30,7 @@ export class ReviewService {
   private executor: ReviewRunExecutor;
 
   constructor(private container: Container) {
-    this.repo = new ReviewRepository(container.db);
+    this.repo = container.reviewRepo;
     this.agents = container.agentsRepo;
     this.executor = new ReviewRunExecutor(container, this.repo, this.agents);
   }
@@ -46,7 +45,7 @@ export class ReviewService {
   async resolveTargets(
     workspaceId: string,
     opts: { agentId?: string; all?: boolean },
-  ): Promise<AgentRow[]> {
+  ): Promise<Agent[]> {
     if (opts.all) return this.agents.listEnabled(workspaceId);
     if (opts.agentId) {
       const agent = await this.agents.getById(workspaceId, opts.agentId);
@@ -103,7 +102,7 @@ export class ReviewService {
   async runReview(
     workspaceId: string,
     prId: string,
-    targets: AgentRow[],
+    targets: Agent[],
     logger?: Logger,
   ): Promise<{ runs: { run_id: string; agent_id: string; agent_name: string }[]; reviews: ReviewDto[] }> {
     const pull = await this.repo.getPull(workspaceId, prId);
@@ -115,7 +114,7 @@ export class ReviewService {
     // the client persists these in global state and subscribes to the SSE
     // stream. The actual (slow) review runs in the background below.
     const runs: { run_id: string; agent_id: string; agent_name: string }[] = [];
-    const jobs: { agent: AgentRow; runId: string }[] = [];
+    const jobs: { agent: Agent; runId: string }[] = [];
     for (const agent of targets) {
       const runId = await this.repo.createAgentRun({
         workspaceId,

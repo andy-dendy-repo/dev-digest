@@ -1,68 +1,30 @@
-import type { Container } from '../../platform/container.js';
-import type {
-  Agent,
-  AgentSkillLink,
-  AgentVersion,
-  CiFailOn,
-  ModelInfo,
-  Provider,
-  ReviewStrategy,
-} from '@devdigest/shared';
-import { AgentsRepository } from './repository.js';
-import { toAgentDto, toAgentVersionDto } from './helpers.js';
+import type { Agent, AgentSkillLink, AgentVersion, ModelInfo, Provider } from '@devdigest/shared';
+import type { CreateAgentInput, UpdateAgentInput } from './domain.js';
+import type { AgentsServiceDeps } from './ports.js';
 
 /**
  * A2 — agents service. Business logic for the Agents tab + Agent Editor.
  * Provider/model selection uses the LLM adapter's dynamic model list.
  *
  * An Agent = provider + model + system_prompt + linked skills + output_schema +
- * enabled. Config changes are versioned via `agent_versions` (repository).
+ * enabled. Config changes are versioned via `agent_versions` (AgentsPort).
  */
 
-// Re-exported for backwards compatibility; implementation lives in ./helpers.
-export { toAgentDto } from './helpers.js';
-
-export interface CreateAgentInput {
-  name: string;
-  description?: string;
-  provider: Provider;
-  model: string;
-  system_prompt: string;
-  output_schema?: unknown;
-  strategy?: ReviewStrategy;
-  ci_fail_on?: CiFailOn;
-  repo_intel?: boolean;
-  enabled?: boolean;
-}
-
-export interface UpdateAgentInput {
-  name?: string;
-  description?: string;
-  provider?: Provider;
-  model?: string;
-  system_prompt?: string;
-  output_schema?: unknown;
-  strategy?: ReviewStrategy;
-  ci_fail_on?: CiFailOn;
-  repo_intel?: boolean;
-  enabled?: boolean;
-}
+export type { CreateAgentInput, UpdateAgentInput } from './domain.js';
 
 export class AgentsService {
-  private repo: AgentsRepository;
+  constructor(private deps: AgentsServiceDeps) {}
 
-  constructor(private container: Container) {
-    this.repo = new AgentsRepository(container.db);
+  private get repo() {
+    return this.deps.agents;
   }
 
   async list(workspaceId: string): Promise<Agent[]> {
-    const rows = await this.repo.list(workspaceId);
-    return rows.map(toAgentDto);
+    return this.repo.list(workspaceId);
   }
 
   async get(workspaceId: string, id: string): Promise<Agent | undefined> {
-    const row = await this.repo.getById(workspaceId, id);
-    return row ? toAgentDto(row) : undefined;
+    return this.repo.getById(workspaceId, id);
   }
 
   /** Delete an agent (and its versions/skill-links, via cascade). */
@@ -71,7 +33,7 @@ export class AgentsService {
   }
 
   async create(workspaceId: string, input: CreateAgentInput, userId?: string): Promise<Agent> {
-    const row = await this.repo.insert({
+    return this.repo.insert({
       workspaceId,
       name: input.name,
       description: input.description,
@@ -85,7 +47,6 @@ export class AgentsService {
       enabled: input.enabled,
       createdBy: userId ?? null,
     });
-    return toAgentDto(row);
   }
 
   async update(
@@ -93,7 +54,7 @@ export class AgentsService {
     id: string,
     patch: UpdateAgentInput,
   ): Promise<Agent | undefined> {
-    const row = await this.repo.update(workspaceId, id, {
+    return this.repo.update(workspaceId, id, {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
       ...(patch.provider !== undefined ? { provider: patch.provider } : {}),
@@ -105,7 +66,6 @@ export class AgentsService {
       ...(patch.repo_intel !== undefined ? { repoIntel: patch.repo_intel } : {}),
       ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
     });
-    return row ? toAgentDto(row) : undefined;
   }
 
   /**
@@ -116,8 +76,7 @@ export class AgentsService {
   async listVersions(workspaceId: string, agentId: string): Promise<AgentVersion[] | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
-    const rows = await this.repo.listVersions(agentId);
-    return rows.map(toAgentVersionDto);
+    return this.repo.listVersions(agentId);
   }
 
   /**
@@ -131,14 +90,12 @@ export class AgentsService {
   ): Promise<AgentVersion | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
-    const row = await this.repo.getVersion(agentId, version);
-    return row ? toAgentVersionDto(row) : undefined;
+    return this.repo.getVersion(agentId, version);
   }
 
   /** Linked skills for an agent as AgentSkillLink[] (ordered). */
   async skillLinks(agentId: string): Promise<AgentSkillLink[]> {
-    const links = await this.repo.linkedSkills(agentId);
-    return links.map((l) => ({ agent_id: agentId, skill_id: l.skill.id, order: l.order }));
+    return this.repo.skillLinks(agentId);
   }
 
   /**
@@ -165,7 +122,7 @@ export class AgentsService {
   ): Promise<AgentSkillLink[] | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
-    const existing = await this.repo.linkedSkills(agentId);
+    const existing = await this.repo.skillLinks(agentId);
     const resolvedOrder = order ?? existing.length;
     await this.repo.linkSkill(agentId, skillId, resolvedOrder);
     return this.skillLinks(agentId);
@@ -177,7 +134,7 @@ export class AgentsService {
    */
   async listModels(provider: Provider): Promise<ModelInfo[]> {
     try {
-      const llm = await this.container.llm(provider);
+      const llm = await this.deps.llm(provider);
       return await llm.listModels();
     } catch {
       return [];

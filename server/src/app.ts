@@ -18,6 +18,8 @@ import { AppError } from './platform/errors.js';
 import { isAllowedHost, isAllowedOrigin } from './platform/local-only.js';
 import { modules } from './modules/index.js';
 import { ReviewService } from './modules/reviews/service.js';
+import { RepoService, type CloneJobPayload } from './modules/repos/service.js';
+import { CLONE_JOB_KIND } from './modules/repos/constants.js';
 
 // Attach the DI container to every request/instance.
 declare module 'fastify' {
@@ -67,6 +69,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
 
   const container = new Container(config, db, opts.overrides);
   app.decorate('container', container);
+  registerJobHandlers(container);
 
   // Reap runs left 'running' by a previous (now-dead) process — otherwise they
   // show as perpetually "running" in the UI and can't be cancelled (no runner).
@@ -195,4 +198,20 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   if (handle) app.addHook('onClose', async () => handle.close());
 
   return app;
+}
+
+/**
+ * Background job handlers, registered once per container (composition root).
+ * repo-intel still registers its INDEX/REFRESH/RESYNC handlers from its own
+ * routes plugin (moves here with the repo-intel ports refactor).
+ */
+function registerJobHandlers(container: Container): void {
+  const repos = new RepoService({
+    repos: container.reposRepo,
+    jobs: container.jobs,
+    git: () => container.git,
+  });
+  container.jobs.register(CLONE_JOB_KIND, (payload) =>
+    repos.runCloneJob(payload as CloneJobPayload),
+  );
 }

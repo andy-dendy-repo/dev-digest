@@ -24,6 +24,7 @@ import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
+import type { AgentsPort } from '../modules/agents/ports.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import type { ReviewsUnitOfWork } from '../modules/reviews/ports.js';
 import { DrizzleUnitOfWork } from '../db/unit-of-work.js';
@@ -79,7 +80,7 @@ export class Container {
   // Shared repositories for cross-cutting entities (agents, reviews/pulls,
   // runs). Constructed here, in the composition root, so consuming modules use
   // `container.agentsRepo` instead of reaching into another module's folder.
-  private _agentsRepo?: AgentsRepository;
+  private _agentsRepo?: AgentsPort;
   private _reviewRepo?: ReviewRepository;
   private _reviewsUow?: ReviewsUnitOfWork;
   private _pullsRepo?: PullsPort;
@@ -108,7 +109,7 @@ export class Container {
     return this._git;
   }
 
-  get agentsRepo(): AgentsRepository {
+  get agentsRepo(): AgentsPort {
     return (this._agentsRepo ??= new AgentsRepository(this.db));
   }
 

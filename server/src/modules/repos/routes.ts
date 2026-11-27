@@ -18,10 +18,13 @@ import { RepoService } from './service.js';
  */
 export default async function reposRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
-  const service = new RepoService(app.container);
-
-  // Register the clone job handler once.
-  service.registerCloneJobHandler();
+  const { container } = app;
+  // The `clone` job handler is registered in the composition root (app.ts).
+  const service = new RepoService({
+    repos: container.reposRepo,
+    jobs: container.jobs,
+    git: () => container.git,
+  });
 
   app.post('/repos', { schema: { body: RepoInput } }, async (req, reply) => {
     const { workspaceId, userId } = await getContext(app.container, req);

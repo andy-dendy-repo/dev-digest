@@ -20,6 +20,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-21 — PR list findings = briefs of the latest `kind='review'` review.** Take `latest_findings` from the same newest review that gives the list its score (one extra `IN` query on `findings`), shaped by `toFindingBrief`/`sortBriefs`; `rollupSeverities` in the same file is an unused leftover, because counts are derived client-side from the briefs. (`server/src/modules/pulls/status.ts`, `server/src/modules/pulls/routes.ts`)
 - **2026-11-26 — A job that times out is failed, not retried.** Don't assume `JobRunner` retries overlap after a timeout: `withRetry`'s default `isRetryable` only retries 429/5xx/`ECONNRESET`-style errors and `TimeoutError` has neither, while `withTimeout` only races (the handler keeps running). Add an `AbortSignal` if a job must really stop. (`server/src/platform/resilience.ts`, `server/src/platform/jobs.ts`)
 - **2026-11-27 — Repositories take `DbOrTx`; cross-repository atomicity goes through a per-module `UnitOfWork` port.** The port lives in `<m>/ports.ts`, the generic `DrizzleUnitOfWork` in `db/unit-of-work.ts`, the getter in the container (`reviewsUow`). A repository may still wrap its own aggregate's writes in `this.db.transaction` (becomes a savepoint inside a UoW), e.g. agent version bumps lock the row with `.for('update')`. (`server/src/db/unit-of-work.ts`, `server/src/modules/agents/repository.ts`)
+- **2026-11-27 — `container.agentsRepo` is an `AgentsPort` returning the shared `Agent` DTO (snake_case), not `AgentRow`.** Read `agent.system_prompt` / `ci_fail_on` / `repo_intel` in reviews code; the row → DTO mapping (`toAgentDto`, `toAgentVersionDto` with `AgentVersionConfig.parse`) runs inside `AgentsRepository`. Job handlers are registered in `app.ts` `registerJobHandlers` (clone), not in route plugins (repo-intel's still are). (`server/src/modules/agents/ports.ts`, `server/src/app.ts`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
@@ -46,6 +47,8 @@ Failed jobs no longer crash the API (`done` gets a handler), Octokit failures be
 `DrizzleUnitOfWork` + `DbOrTx`; atomic review persistence (`reviewsUow`), agent insert/update (row lock)/`setSkills`, `deleteAgentRun`, PR detail replace, full reindex (graph built before the tx). Migration 0011 adds FK/lookup indexes. 7 atomicity IT tests, all red on the old code.
 ### 2026-11-27 — B2: pulls, polling, workspace, settings behind ports
 `PullsService` (+ `PullsPort`, `ReviewSummaryPort`/`RunCostsPort` on the reviews repository) also serves `POST /repos/:id/poll`; `SettingsService` + `ConnectionTester` (`adapters/connection-tester.ts`), `WorkspaceService` over `ReposPort`; routes are parse → service → return. Layer baseline 58 → 45.
+### 2026-11-27 — B3: agents + repos with explicit deps
+`AgentsService({agents, llm})`, `RepoService({repos, jobs, git})`; `agents/domain.ts` holds the request Zod schemas (service types are `z.infer`); `JobQueue` port in `vendor/shared/adapters.ts` (client copy synced), `MockJobQueue` in mocks; agents helpers↔repository cycle gone. Layer baseline 45 → 36 (only reviews + repo-intel debt left).
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

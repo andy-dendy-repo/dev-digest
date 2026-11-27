@@ -1,3 +1,5 @@
+import type { GitClient, JobQueue } from '@devdigest/shared';
+
 /**
  * Ports of the repos module (Application ring). Domain types only; the Drizzle
  * implementation (`repository.ts`) returns rows that satisfy these shapes.
@@ -13,6 +15,7 @@ export interface RepoRecord {
   defaultBranch: string;
   clonePath: string | null;
   lastPolledAt: Date | null;
+  createdBy: string | null;
   createdAt: Date;
 }
 
@@ -35,4 +38,11 @@ export interface ReposPort {
   /** Persist the clone path and bump `last_polled_at` once a clone completes. */
   updateClonePath(repoId: string, clonePath: string): Promise<void>;
   remove(workspaceId: string, id: string): Promise<boolean>;
+}
+
+export interface RepoServiceDeps {
+  repos: ReposPort;
+  jobs: JobQueue;
+  /** Resolved per call (the container builds the git adapter lazily). */
+  git: () => GitClient;
 }

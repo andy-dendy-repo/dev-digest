@@ -10,7 +10,7 @@ description: >
   platform/; and when reviewing or refactoring backend layering. Use it even when the
   request never says "architecture": every backend feature lands in these rings.
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   updated: "2026-11-27"
   sources: references.md
 ---

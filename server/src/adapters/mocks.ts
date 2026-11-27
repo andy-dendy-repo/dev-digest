@@ -31,6 +31,9 @@ import type {
   AuthWorkspace,
   SecretsProvider,
   SecretKey,
+  JobQueue,
+  JobHandler,
+  EnqueuedJob,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -326,5 +329,33 @@ export class MockSecretsProvider implements SecretsProvider {
   constructor(private secrets: Partial<Record<string, string>> = {}) {}
   async get(key: SecretKey): Promise<string | undefined> {
     return this.secrets[key as string];
+  }
+}
+
+// ---------- Mock job queue ----------
+/**
+ * In-memory `JobQueue`: records every enqueue. Like the real JobRunner it
+ * throws when no handler is registered for a kind (pass `strict: false` to
+ * accept any kind). Handlers are NOT run unless `runJobs: true`.
+ */
+export class MockJobQueue implements JobQueue {
+  public enqueued: { workspaceId: string; kind: string; payload: unknown }[] = [];
+  private handlers = new Map<string, JobHandler>();
+
+  constructor(private opts: { strict?: boolean; runJobs?: boolean } = {}) {}
+
+  register(kind: string, handler: JobHandler): void {
+    this.handlers.set(kind, handler);
+  }
+
+  async enqueue(workspaceId: string, kind: string, payload: unknown): Promise<EnqueuedJob> {
+    const handler = this.handlers.get(kind);
+    if (!handler && this.opts.strict !== false) {
+      throw new Error(`No job handler registered for kind '${kind}'`);
+    }
+    this.enqueued.push({ workspaceId, kind, payload });
+    const id = `job-${this.enqueued.length}`;
+    const done = this.opts.runJobs && handler ? handler(payload, { jobId: id }) : Promise.resolve();
+    return { id, done };
   }
 }
