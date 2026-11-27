@@ -1,11 +1,13 @@
 # Examples: current code → target shape
 
 Each "before" below is real code from this repo, recorded as debt in
-`assets/known-violations.json`. Write new code in the "after" shape.
+`assets/known-violations.json` (or, where marked, debt that has since been fixed
+and is kept as the worked example). Write new code in the "after" shape.
 
 ## 1. Route queries the database (`routes-no-infra`)
 
-**Before:** `server/src/modules/pulls/routes.ts`
+**Before:** `server/src/modules/pulls/routes.ts` (fixed in the B2 refactor: the
+"after" shape below is now the real `pulls/{ports,service,repository,routes}.ts`)
 
 ```ts
 import { and, eq } from 'drizzle-orm';

@@ -27,6 +27,13 @@ import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import type { ReviewsUnitOfWork } from '../modules/reviews/ports.js';
 import { DrizzleUnitOfWork } from '../db/unit-of-work.js';
+import type { PullsPort } from '../modules/pulls/ports.js';
+import { DrizzlePullsRepository } from '../modules/pulls/repository.js';
+import type { ConnectionTester, SettingsPort } from '../modules/settings/ports.js';
+import { DrizzleSettingsRepository } from '../modules/settings/repository.js';
+import type { ReposPort } from '../modules/repos/ports.js';
+import { RepoRepository } from '../modules/repos/repository.js';
+import { LiveConnectionTester } from '../adapters/connection-tester.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -75,6 +82,10 @@ export class Container {
   private _agentsRepo?: AgentsRepository;
   private _reviewRepo?: ReviewRepository;
   private _reviewsUow?: ReviewsUnitOfWork;
+  private _pullsRepo?: PullsPort;
+  private _settingsRepo?: SettingsPort;
+  private _reposRepo?: ReposPort;
+  private _connectionTester?: ConnectionTester;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -103,6 +114,29 @@ export class Container {
 
   get reviewRepo(): ReviewRepository {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
+  }
+
+  get pullsRepo(): PullsPort {
+    return (this._pullsRepo ??= new DrizzlePullsRepository(this.db));
+  }
+
+  get settingsRepo(): SettingsPort {
+    return (this._settingsRepo ??= new DrizzleSettingsRepository(this.db));
+  }
+
+  get reposRepo(): ReposPort {
+    return (this._reposRepo ??= new RepoRepository(this.db));
+  }
+
+  /**
+   * S11 "Test connection": a candidate key gets a throwaway client
+   * (`githubWithToken` / `llmWithKey`), no key → the stored secret.
+   */
+  get connectionTester(): ConnectionTester {
+    return (this._connectionTester ??= new LiveConnectionTester({
+      github: async (token) => (token ? this.githubWithToken(token) : this.github()),
+      llm: (provider, key) => (key ? this.llmWithKey(provider, key) : this.llm(provider)),
+    }));
   }
 
   /** Atomic review persistence (one transaction per finished run). */

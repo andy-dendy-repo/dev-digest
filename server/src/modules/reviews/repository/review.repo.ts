@@ -132,3 +132,34 @@ export async function setFindingDismissed(
     .returning();
   return row;
 }
+
+/**
+ * Latest `kind='review'` review per PR (score + its findings) — the PR list's
+ * score ring and findings preview. PRs never reviewed are absent from the map.
+ * One IN-query per table; rows newest-first so the first seen per PR wins.
+ */
+export async function latestReviews(
+  db: DbOrTx,
+  prIds: string[],
+): Promise<Map<string, { score: number | null; findings: FindingRow[] }>> {
+  const out = new Map<string, { score: number | null; findings: FindingRow[] }>();
+  if (prIds.length === 0) return out;
+  const reviewRows = await db
+    .select({ id: t.reviews.id, prId: t.reviews.prId, score: t.reviews.score })
+    .from(t.reviews)
+    .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
+    .orderBy(desc(t.reviews.createdAt));
+  const prByReview = new Map<string, string>();
+  for (const rv of reviewRows) {
+    if (out.has(rv.prId)) continue;
+    out.set(rv.prId, { score: rv.score, findings: [] });
+    prByReview.set(rv.id, rv.prId);
+  }
+  if (prByReview.size === 0) return out;
+  const findingRows = await db
+    .select()
+    .from(t.findings)
+    .where(inArray(t.findings.reviewId, [...prByReview.keys()]));
+  for (const f of findingRows) out.get(prByReview.get(f.reviewId)!)!.findings.push(f);
+  return out;
+}

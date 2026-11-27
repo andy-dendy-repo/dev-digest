@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
+import type { DbOrTx } from '../../db/client.js';
 import * as t from '../../db/schema.js';
+import type { NewRepo, ReposPort } from './ports.js';
 
 /**
  * F1 — repos data-access layer. The ONLY place that touches the `repos`
@@ -9,16 +10,8 @@ import * as t from '../../db/schema.js';
 
 export type RepoRow = typeof t.repos.$inferSelect;
 
-export interface InsertRepo {
-  workspaceId: string;
-  owner: string;
-  name: string;
-  fullName: string;
-  createdBy: string;
-}
-
-export class RepoRepository {
-  constructor(private db: Db) {}
+export class RepoRepository implements ReposPort {
+  constructor(private db: DbOrTx) {}
 
   /** Find a repo in a workspace by its `owner/name` full name (dedupe on add). */
   async findByFullName(workspaceId: string, fullName: string): Promise<RepoRow | undefined> {
@@ -41,7 +34,7 @@ export class RepoRepository {
     return row;
   }
 
-  async insert(values: InsertRepo): Promise<RepoRow> {
+  async insert(values: NewRepo): Promise<RepoRow> {
     const [row] = await this.db
       .insert(t.repos)
       .values({
