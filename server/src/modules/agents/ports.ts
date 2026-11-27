@@ -1,6 +1,7 @@
 import type {
   Agent,
   AgentSkillLink,
+  AgentSkillView,
   AgentVersion,
   CiFailOn,
   LLMProvider,
@@ -60,8 +61,21 @@ export interface AgentsPort {
   skillLinks(agentId: string): Promise<AgentSkillLink[]>;
   /** Link one skill at `order` (idempotent: upserts the order). */
   linkSkill(agentId: string, skillId: string, order: number): Promise<void>;
-  /** Replace the whole ordered set of linked skills (order = index). */
+  /** Replace the whole ordered set of linked skills (order = index, all enabled). */
   setSkills(agentId: string, skillIds: string[]): Promise<void>;
+  /** Linked skills with what the agent's Skills tab shows, in `order` ascending. */
+  skillViews(agentId: string): Promise<AgentSkillView[]>;
+  /**
+   * Replace the ordered set of linked skills with per-agent `enabled` flags
+   * (order = index), bump the agent version and snapshot it — one transaction.
+   */
+  replaceSkillLinks(
+    workspaceId: string,
+    agentId: string,
+    links: { skillId: string; enabled: boolean }[],
+  ): Promise<void>;
+  /** The ids among `skillIds` that are NOT skills of this workspace. */
+  foreignSkillIds(workspaceId: string, skillIds: string[]): Promise<string[]>;
 }
 
 export interface AgentsServiceDeps {

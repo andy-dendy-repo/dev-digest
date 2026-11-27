@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Agent, AgentSkillLink, AgentVersion, LLMProvider } from '@devdigest/shared';
+import type { Agent, AgentSkillLink, AgentSkillView, AgentVersion, LLMProvider } from '@devdigest/shared';
 import { MockGitClient, MockJobQueue, MockLLMProvider } from '../src/adapters/mocks.js';
 import { AgentsService } from '../src/modules/agents/service.js';
 import type { AgentPatch, AgentsPort, NewAgent } from '../src/modules/agents/ports.js';
@@ -15,6 +15,7 @@ import { INDEX_JOB_KIND, REFRESH_JOB_KIND } from '../src/modules/repo-intel/cons
 class FakeAgents implements AgentsPort {
   agents: (Agent & { workspaceId: string })[] = [];
   links: AgentSkillLink[] = [];
+  ownSkills = new Set<string>();
   lastInsert?: NewAgent;
   lastPatch?: AgentPatch;
 
@@ -64,11 +65,32 @@ class FakeAgents implements AgentsPort {
     return this.links.filter((l) => l.agent_id === agentId);
   }
   async linkSkill(agentId: string, skillId: string, order: number) {
-    this.links.push({ agent_id: agentId, skill_id: skillId, order });
+    this.links.push({ agent_id: agentId, skill_id: skillId, order, enabled: true });
   }
   async setSkills(agentId: string, skillIds: string[]) {
     this.links = this.links.filter((l) => l.agent_id !== agentId);
-    skillIds.forEach((skill_id, order) => this.links.push({ agent_id: agentId, skill_id, order }));
+    skillIds.forEach((skill_id, order) =>
+      this.links.push({ agent_id: agentId, skill_id, order, enabled: true }),
+    );
+  }
+  async skillViews(agentId: string): Promise<AgentSkillView[]> {
+    return (await this.skillLinks(agentId)).map((l) => ({
+      ...l,
+      name: l.skill_id,
+      description: '',
+      type: 'custom' as const,
+      source: 'manual' as const,
+      skill_enabled: true,
+    }));
+  }
+  async replaceSkillLinks(_ws: string, agentId: string, links: { skillId: string; enabled: boolean }[]) {
+    this.links = this.links.filter((l) => l.agent_id !== agentId);
+    links.forEach((l, order) =>
+      this.links.push({ agent_id: agentId, skill_id: l.skillId, order, enabled: l.enabled }),
+    );
+  }
+  async foreignSkillIds(_ws: string, skillIds: string[]) {
+    return skillIds.filter((id) => !this.ownSkills.has(id));
   }
 }
 
@@ -113,6 +135,26 @@ describe('AgentsService', () => {
       ['s2', 1],
       ['s3', 2],
     ]);
+  });
+
+  it('replaceSkills keeps order + per-agent flags and rejects another workspace\'s skill', async () => {
+    const { agents, service } = agentsService();
+    agents.ownSkills = new Set(['s1', 's2']);
+    const created = await service.create('ws', { name: 'A', provider: 'openai', model: 'm', system_prompt: 'p' });
+    const views = await service.replaceSkills('ws', created.id, {
+      skills: [
+        { skill_id: 's2', enabled: false },
+        { skill_id: 's1', enabled: true },
+      ],
+    });
+    expect(views!.map((v) => [v.skill_id, v.order, v.enabled])).toEqual([
+      ['s2', 0, false],
+      ['s1', 1, true],
+    ]);
+    await expect(
+      service.replaceSkills('ws', created.id, { skills: [{ skill_id: 'foreign', enabled: true }] }),
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(await service.replaceSkills('other-ws', created.id, { skills: [] })).toBeUndefined();
   });
 
   it('listModels degrades to [] when the provider key is missing', async () => {

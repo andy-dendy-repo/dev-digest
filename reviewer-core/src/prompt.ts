@@ -44,7 +44,11 @@ const MAX_PR_DESCRIPTION_CHARS = 4000;
 export interface PromptParts {
   /** Agent's system prompt (trusted). */
   system: string;
-  /** Linked skill bodies (trusted-ish; community skills should be sanitized upstream). */
+  /**
+   * Rendered skill blocks (see `formatSkillBlock`), in the agent's order. Trusted:
+   * the caller passes only skills a user enabled — imported skills are vetted
+   * (stored disabled until enabled) before they can reach here.
+   */
   skills?: string[];
   /** Relevant memory items (trusted, curated). */
   memory?: string[];
@@ -75,6 +79,24 @@ export interface PromptParts {
   diff: string;
   /** Optional task framing line, e.g. "Review PR #482 '…'". */
   task?: string;
+}
+
+/** A skill as it is rendered into the `## Skills / rules` section. */
+export interface SkillBlockInput {
+  name: string;
+  /** The skill's interface — one directive sentence. */
+  description: string;
+  body: string;
+}
+
+/**
+ * Render one skill as a prompt block: `### <name>`, its description as a quote
+ * line, then the markdown body. The server counts tokens on exactly this text,
+ * so the trace's per-skill tokens match what the model receives.
+ */
+export function formatSkillBlock(skill: SkillBlockInput): string {
+  const description = skill.description.replace(/\s+/g, ' ').trim();
+  return `### ${skill.name}\n> ${description}\n\n${skill.body.trim()}`;
 }
 
 export interface AssembledPrompt {

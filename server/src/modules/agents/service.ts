@@ -1,4 +1,13 @@
-import type { Agent, AgentSkillLink, AgentVersion, ModelInfo, Provider } from '@devdigest/shared';
+import type {
+  Agent,
+  AgentSkillLink,
+  AgentSkillView,
+  AgentVersion,
+  ModelInfo,
+  Provider,
+  SetAgentSkillsRequest,
+} from '@devdigest/shared';
+import { ValidationError } from '../../platform/errors.js';
 import type { CreateAgentInput, UpdateAgentInput } from './domain.js';
 import type { AgentsServiceDeps } from './ports.js';
 
@@ -111,6 +120,36 @@ export class AgentsService {
     if (!agent) return undefined;
     await this.repo.setSkills(agentId, skillIds);
     return this.skillLinks(agentId);
+  }
+
+  /** The agent's linked skills for the Skills tab; undefined when the agent isn't here. */
+  async skillViews(workspaceId: string, agentId: string): Promise<AgentSkillView[] | undefined> {
+    const agent = await this.repo.getById(workspaceId, agentId);
+    if (!agent) return undefined;
+    return this.repo.skillViews(agentId);
+  }
+
+  /**
+   * Replace the agent's ordered skill list (Skills tab: attach, on/off, reorder).
+   * Every skill must belong to the agent's workspace — the FK alone would accept
+   * another tenant's skill. Records a new agent version.
+   */
+  async replaceSkills(
+    workspaceId: string,
+    agentId: string,
+    body: SetAgentSkillsRequest,
+  ): Promise<AgentSkillView[] | undefined> {
+    const agent = await this.repo.getById(workspaceId, agentId);
+    if (!agent) return undefined;
+    const ids = body.skills.map((s) => s.skill_id);
+    const foreign = await this.repo.foreignSkillIds(workspaceId, ids);
+    if (foreign.length > 0) throw new ValidationError('Unknown skill', { skill_ids: foreign });
+    await this.repo.replaceSkillLinks(
+      workspaceId,
+      agentId,
+      body.skills.map((s) => ({ skillId: s.skill_id, enabled: s.enabled })),
+    );
+    return this.repo.skillViews(agentId);
   }
 
   /** Link a single skill (append or set order) — additive to existing links. */

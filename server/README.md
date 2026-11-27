@@ -72,7 +72,8 @@ flowchart TB
     reviews["reviews<br/>/pulls/:id/review · /reviews · /findings/:id/(accept|dismiss)<br/>/runs/:id/(events|trace)"]
   end
   subgraph Agents["Agents"]
-    agents["agents<br/>/agents · /agents/:id"]
+    agents["agents<br/>/agents · /agents/:id · /agents/:id/skills"]
+    skills["skills<br/>/skills · /skills/:id · /skills/import/preview"]
   end
   subgraph Intel["Repo intelligence"]
     repoIntel["repo-intel<br/>/repos/:id/index-state · /resync"]
@@ -128,6 +129,14 @@ What the reviewer actually sends to the model is assembled in
   demo / test / not for production / do not flag" never descope the review — real
   defects are reported at full severity regardless. We deliberately do **not**
   keyword-scan untrusted text (a denylist only catches one phrasing).
+- **Skills are trusted text, gated by the user.** The executor loads the agent's
+  *effective* skills — linked, enabled for the agent (`agent_skills.enabled`) AND
+  globally (`skills.enabled`) — in the agent's order, renders each with
+  `formatSkillBlock` and passes them as the `## Skills / rules` section. They are
+  not `wrapUntrusted` (that would turn rules into data); the gate is upstream:
+  imported skills (`source: imported_file|imported_url|community`) are stored
+  disabled until a user enables them. Archives are unpacked in the browser and
+  only text entries reach `POST /skills/import/preview`, which stores nothing.
 - **Grounding is mandatory.** Every finding must cite a line that exists in the
   diff or it is dropped (`groundFindings`), and the score is recomputed from the
   surviving findings — the model's self-reported score is ignored.
