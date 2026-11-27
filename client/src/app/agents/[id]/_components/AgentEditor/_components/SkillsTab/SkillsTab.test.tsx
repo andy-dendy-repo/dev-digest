@@ -38,7 +38,7 @@ const LINKS = [view(SKILLS[0]!, 0, true), view(SKILLS[1]!, 1, false), view(SKILL
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: h.push }) }));
 vi.mock("@/lib/hooks/agents", () => ({
   useAgentSkills: () => ({ data: LINKS, isLoading: false, isError: false }),
-  useSetAgentSkills: () => ({ mutate: h.mutate }),
+  useSetAgentSkills: () => ({ save: h.mutate }),
 }));
 vi.mock("@/lib/hooks/skills", () => ({
   useSkills: () => ({ data: SKILLS, isLoading: false, isError: false }),
