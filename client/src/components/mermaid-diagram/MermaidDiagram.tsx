@@ -21,16 +21,16 @@ function looksLikeMermaid(src: string): boolean {
  */
 export function MermaidDiagram({ chart }: { chart: string }) {
   const ref = React.useRef<HTMLDivElement>(null);
-  const [state, setState] = React.useState<"pending" | "ok" | "invalid">("pending");
+  const src = (chart ?? "").trim();
+  const isMermaid = looksLikeMermaid(src);
+  // Async render result for one source; anything else is still pending.
+  const [result, setResult] = React.useState<{ src: string; state: "ok" | "invalid" } | null>(null);
+  const state = !isMermaid ? "invalid" : result?.src === src ? result.state : "pending";
 
   React.useEffect(() => {
     let cancelled = false;
-    const src = (chart ?? "").trim();
-    if (!looksLikeMermaid(src)) {
-      setState("invalid");
-      return;
-    }
-    setState("pending");
+    if (!isMermaid) return;
+    const setState = (next: "ok" | "invalid") => setResult({ src, state: next });
     (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
@@ -53,7 +53,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     return () => {
       cancelled = true;
     };
-  }, [chart]);
+  }, [src, isMermaid]);
 
   // Not a (valid) diagram → render nothing rather than a broken box.
   if (state === "invalid") return null;

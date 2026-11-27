@@ -34,6 +34,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-27 — Interpolating markup into a message.** Use `t.rich("key", { settings: (chunks) => <a …>{chunks}</a> })` with `<settings>…</settings>` tags in the JSON instead of splitting a sentence into several keys around a link or `<kbd>`. (`client/src/app/onboarding/_components/AddRepoView/AddRepoView.tsx`)
 - **2026-11-27 — `React.useEffectEvent` is stable in react 19.3.1** (installed). Use it for callbacks fired from a subscription (e.g. `useRunEvents`' `onSettled`) instead of a `wasRunning` ref + effect or adding the callback to the effect deps (which re-subscribes the EventSources). (`client/src/lib/hooks/reviews.ts`)
 - **2026-11-27 — Supersedes "`@testing-library/user-event` ^14.6 is installed" (2026-11-21):** no client test uses `fireEvent` any more; `renderWithProviders` returns a ready `user`. (`client/src/test/render.tsx`)
+- **2026-11-27 — `eslint-plugin-react-hooks` 7 flags `setState` in an effect body (`react-hooks/set-state-in-effect`).** Derive the value instead (e.g. `running = runIds.length > 0 && settledKey !== key` in `useRunEvents`) and reset state in the effect cleanup; disable the rule only for a browser-only read after hydration (`theme.tsx`, `repo-context.tsx`, with the reason in a comment). (`client/eslint.config.mjs`)
+- **2026-11-27 — `next build` warns "The Next.js plugin was not detected in your ESLint configuration"** as soon as an ESLint config exists. Add `@next/eslint-plugin-next` (same version as `next`) via `nextPlugin.flatConfig.coreWebVitals`. In `no-restricted-imports`, a `group` like `@/lib/hooks` also matches `@/lib/hooks/agents`; use `paths: [{ name }]` for an exact specifier. (`client/eslint.config.mjs`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -52,6 +54,8 @@ Added `FindingsPreview` (severity icons → portalled read-only panel) to the Ag
 Finding shortcuts act in one panel only (`useFindingShortcuts` owner stack) and ignore Cmd/Ctrl chords; no double error toasts; trace drawer streams live runs (`running` + `key`); `ConfigTab` reset via `key={agent.id}` instead of an effect. `vendor/shared` synced from the server copy.
 ### 2026-11-27 — Refactor F1–F3 (imports, data layer, thin pages)
 `@/` aliases + named exports (F1); key factories + `queryOptions` per domain, `core.ts` split into settings/repos/pulls (F2); PR detail, PR list and agent detail pages became thin entries over `_components/<View>`; `FindingsTab`/`RunHistory` split; `pr-context` replaces 5-level prop drilling (F3). Characterisation tests written first.
+### 2026-11-27 — Refactor F4–F7
+Next special files + server page shells with metadata + client namespace pick (F4); strings/units to messages, colour tokens (F5); events instead of effects, accordion a11y bug fixed, stable keys, timers, `renderWithProviders` everywhere (F6); ESLint 9 flat config in CI (F7). e2e not run by this session (coordinator runs it).
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
