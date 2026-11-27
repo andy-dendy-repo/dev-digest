@@ -36,6 +36,7 @@ This file is a map. Module rules live in each module's own `AGENTS.md`.
 
 ## Do not touch
 - Commit or open a PR only when asked; never commit on `main` — branch first.
+- Before `gh pr create`, run [pr-self-review](.claude/skills/pr-self-review/SKILL.md). A critical finding blocks the PR (hook in `.claude/settings.json`); fix the code, not the gate.
 - Never commit `.env` files or API keys.
 
 ## Skills

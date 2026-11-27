@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pr-self-review batch result",
+  "description": "What one reviewer subagent writes to <run>/findings/<batch-id>.json.",
+  "type": "object",
+  "required": ["skill", "batch", "filesReviewed", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "skill": { "type": "string", "description": "Skill name, e.g. onion-architecture" },
+    "batch": { "type": "string", "description": "Batch id from plan.json, e.g. onion-architecture--1" },
+    "filesReviewed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Every file of the batch, repo-relative. A batch file missing here makes the verdict incomplete."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "severity", "rule", "summary", "evidence", "fix", "introduced"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string", "description": "Repo-relative path" },
+          "line": { "type": "integer", "minimum": 0, "description": "1-based line in the working-tree file; 0 if file-level" },
+          "severity": { "enum": ["critical", "major", "minor", "nit"] },
+          "rule": { "type": "string", "description": "Short kebab-case id of the skill rule broken, e.g. core-no-infra, rules-of-hooks" },
+          "summary": { "type": "string", "description": "One sentence: what is wrong" },
+          "evidence": { "type": "string", "description": "The offending code (quoted) and why it matches the rule" },
+          "fix": { "type": "string", "description": "The concrete change that resolves it" },
+          "introduced": { "type": "boolean", "description": "true if this diff creates the problem; false if it predates the diff" }
+        }
+      }
+    }
+  }
+}
