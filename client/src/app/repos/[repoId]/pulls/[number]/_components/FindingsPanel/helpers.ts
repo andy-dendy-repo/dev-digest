@@ -1,5 +1,6 @@
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import { LOW_CONFIDENCE_THRESHOLD, SEVERITY_ORDER } from "./constants";
+import { severityRank } from "@/lib/findings-severity";
+import { LOW_CONFIDENCE_THRESHOLD } from "./constants";
 
 /** Drop low-confidence findings when `hideLow` is on. */
 export function confidentFindings(findings: FindingRecord[], hideLow: boolean): FindingRecord[] {
@@ -14,9 +15,7 @@ export function visibleFindings(
 ): FindingRecord[] {
   let shown = confidentFindings(findings, hideLow);
   if (severity) shown = shown.filter((f) => f.severity === severity);
-  return [...shown].sort(
-    (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
-  );
+  return [...shown].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 }
 
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);

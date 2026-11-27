@@ -1,8 +1,7 @@
 /* RunTraceDrawer — A5 Run Trace + Live Log drawer (720px). Ported from
    screen_trace.jsx. Tabs: Trace (Configuration / Stats / Prompt assembly /
    Tool calls / Raw output) and Live log (SSE via useRunEvents → LiveLogStream,
-   which has client-side Filter-input search). Default export so the PR-detail
-   page (A2) can mount it from the run-status area. */
+   which has client-side Filter-input search). */
 "use client";
 
 import React from "react";
@@ -12,7 +11,7 @@ import type { FindingRecord } from "@devdigest/shared";
 import { useRunTrace } from "@/lib/hooks/trace";
 import { useRunEvents } from "@/lib/hooks/reviews";
 import { DRAWER_WIDTH, LOG_HEIGHT, TABS } from "./constants";
-import { eventsToLog, traceLog } from "./helpers";
+import { eventsToLog, traceLog } from "../run-log";
 import { s } from "./styles";
 import { TraceBody } from "./_components/TraceBody";
 

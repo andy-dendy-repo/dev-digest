@@ -9,23 +9,16 @@ import type { FindingActionKind, FindingRecord, Severity } from "@devdigest/shar
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "@/lib/hooks/reviews";
 import { countBySeverity } from "@/lib/findings-severity";
+import { githubBlobUrl } from "@/lib/github-urls";
+import { usePrContext } from "../pr-context";
 import { confidentFindings, visibleFindings } from "./helpers";
 import { SeverityFilter } from "./SeverityFilter";
 import { useFindingShortcuts } from "./useFindingShortcuts";
 import { s } from "./styles";
 
-export function FindingsPanel({
-  findings,
-  prId,
-  repoFullName,
-  headSha,
-}: {
-  findings: FindingRecord[];
-  prId: string;
-  repoFullName?: string | null;
-  headSha?: string | null;
-}) {
+export function FindingsPanel({ findings }: { findings: FindingRecord[] }) {
   const t = useTranslations("prReview");
+  const { prId, repoFullName, headSha } = usePrContext();
   const action = useFindingAction();
   const [hideLow, setHideLow] = React.useState(false);
   const [severity, setSeverity] = React.useState<Severity | null>(null);
@@ -80,8 +73,11 @@ export function FindingsPanel({
               focused={i === focusIdx}
               defaultExpanded={i === 0}
               pending={action.isPending}
-              repoFullName={repoFullName}
-              headSha={headSha}
+              fileHref={
+                repoFullName && headSha
+                  ? githubBlobUrl(repoFullName, headSha, f.file, f.start_line, f.end_line)
+                  : undefined
+              }
               onAction={(act) => action.mutate({ findingId: f.id, action: act, prId })}
             />
           ))
