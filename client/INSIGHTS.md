@@ -10,6 +10,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## What Doesn't Work
 <!-- Dead ends and antipatterns — always with WHY. Most-skipped, most valuable. -->
+- **2026-11-27 — Runtime imports from `@devdigest/shared` break the Next build but pass every test.** Only `import type` from it in the client, because its barrel uses `.js` specifiers that Next's webpack cannot resolve while Vitest maps them to `.ts`; `/skills` showed "Module not found: ./contracts/findings.js" only in e2e. Now a lint error (`@typescript-eslint/no-restricted-imports`, `allowTypeImports`); copy a needed constant instead. (`client/eslint.config.mjs`, `client/src/lib/skill-archive.ts`)
 
 ## Codebase Patterns
 <!-- Non-default conventions and architecture decisions. -->
@@ -36,6 +37,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-27 — Supersedes "`@testing-library/user-event` ^14.6 is installed" (2026-11-21):** no client test uses `fireEvent` any more; `renderWithProviders` returns a ready `user`. (`client/src/test/render.tsx`)
 - **2026-11-27 — `eslint-plugin-react-hooks` 7 flags `setState` in an effect body (`react-hooks/set-state-in-effect`).** Derive the value instead (e.g. `running = runIds.length > 0 && settledKey !== key` in `useRunEvents`) and reset state in the effect cleanup; disable the rule only for a browser-only read after hydration (`theme.tsx`, `repo-context.tsx`, with the reason in a comment). (`client/eslint.config.mjs`)
 - **2026-11-27 — `next build` warns "The Next.js plugin was not detected in your ESLint configuration"** as soon as an ESLint config exists. Add `@next/eslint-plugin-next` (same version as `next`) via `nextPlugin.flatConfig.coreWebVitals`. In `no-restricted-imports`, a `group` like `@/lib/hooks` also matches `@/lib/hooks/agents`; use `paths: [{ name }]` for an exact specifier. (`client/eslint.config.mjs`)
+- **2026-11-27 — fflate 0.8 zip fixtures are corrupt under jsdom.** Run a test that builds zips with `zipSync`/`strToU8` in `// @vitest-environment node`, because fflate checks `instanceof Uint8Array` and jsdom's realm differs: the data is treated as a nested folder (`a.md/0/`, `a.md/1/`). Browser code is unaffected. (`client/src/lib/skill-archive.test.ts`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->
@@ -56,6 +58,8 @@ Finding shortcuts act in one panel only (`useFindingShortcuts` owner stack) and 
 `@/` aliases + named exports (F1); key factories + `queryOptions` per domain, `core.ts` split into settings/repos/pulls (F2); PR detail, PR list and agent detail pages became thin entries over `_components/<View>`; `FindingsTab`/`RunHistory` split; `pr-context` replaces 5-level prop drilling (F3). Characterisation tests written first.
 ### 2026-11-27 — Refactor F4–F7
 Next special files + server page shells with metadata + client namespace pick (F4); strings/units to messages, colour tokens (F5); events instead of effects, accordion a11y bug fixed, stable keys, timers, `renderWithProviders` everywhere (F6); ESLint 9 flat config in CI (F7). e2e not run by this session (coordinator runs it).
+### 2026-11-27 — M2 Skills UI
+`/skills` grid + `/skills/:id` editor (Config/Preview over one draft, remounted per version), create/import modals (archive unpacked in the browser, scripts never inflated), agent Skills tab with optimistic `PUT /agents/:id/skills`, native drag + Alt+↑/↓. e2e flow 08; badge counts all listed workspace skills (`3 of 10`).
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->
