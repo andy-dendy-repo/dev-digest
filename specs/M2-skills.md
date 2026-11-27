@@ -43,10 +43,11 @@ visible in the run trace with the tokens they add.
      (`flaky-test-patterns`) is added through import of `examples/skills/flaky-test-patterns.zip`.
   8. **Seed.** The six design skills (pr-quality-rubric, no-then-chains,
      secret-leakage-gate, lethal-trifecta, phantom-api-gate, test-coverage-nudge) linked to
-     Security Reviewer with three enabled; `api-breaking-changes` (unlinked) for the
+     Security Reviewer with three enabled (its tab shows `3 of 10 enabled`: all workspace skills are listed); `api-breaking-changes` (unlinked) for the
      API-contract experiment on General Reviewer.
-  9. **pr-self-review** (Claude Code skill) has model auto-invocation disabled and is run
-     by hand (`/pr-self-review`).
+  9. **pr-self-review** (Claude Code skill) stays both auto-invoked and callable by hand
+     (`/pr-self-review`); a manual run must route both UI and backend skills. (Decision
+     2026-11-27: model auto-invocation is NOT disabled.)
 - Out:
   - Skill evals, stats, a versions UI, import from URL, the community catalog.
   - Running anything from an archive (scripts, binaries) — ever.
@@ -86,7 +87,7 @@ P2:
 - [ ] Control experiment reproduces: Test Quality (happy-path-only test PR) and API contract
       (route signature change PR on General Reviewer) — missed without skills, flagged with them.
       Runbook + results in `docs/skills-experiment.md`.
-- [ ] `pr-self-review` has `disable-model-invocation: true`; a manual run routes both UI and backend skills.
+- [ ] A manual `/pr-self-review` run routes both UI and backend skills (auto-invocation stays on).
 
 P3:
 - [ ] Unit + integration + client tests and e2e flow `08-skills` pass; layer check clean.
