@@ -6,6 +6,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Badge } from "@devdigest/ui";
 import type { ReviewRecord, RunSummary } from "@devdigest/shared";
 import { useDeleteReview } from "@/lib/hooks/reviews";
@@ -32,6 +33,7 @@ export function ReviewRunAccordion({
   targetRunId?: string | null;
   targetNonce?: number;
 }) {
+  const t = useTranslations("prReview");
   const { prId } = usePrContext();
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -59,15 +61,14 @@ export function ReviewRunAccordion({
         style={s.header}
       >
         <Icon.Cpu size={15} style={s.mutedIcon} />
-        <span style={s.agentName}>{review.agent_name ?? "Agent"}</span>
+        <span style={s.agentName}>{review.agent_name ?? t("agentFallback")}</span>
         {review.verdict && (
           <Badge color={verdictColor} bg="transparent">
-            {review.verdict.replace("_", " ")}
+            {t(`accordion.verdict.${review.verdict}`)}
           </Badge>
         )}
         <span style={s.counts}>
-          {findings.length} finding{findings.length === 1 ? "" : "s"}
-          {blockers > 0 ? ` · ${blockers} blocker${blockers === 1 ? "" : "s"}` : ""}
+          {t("accordion.counts", { findings: findings.length, blockers })}
         </span>
         <span style={s.spacer} />
         {review.score != null && (
@@ -81,13 +82,13 @@ export function ReviewRunAccordion({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`)) {
+            if (window.confirm(t("accordion.confirmDelete", { agent: review.agent_name ?? t("accordion.agentGeneric") }))) {
               del.mutate(review.id);
             }
           }}
           disabled={del.isPending}
-          title="Delete this review run"
-          aria-label="Delete this review run"
+          title={t("accordion.delete")}
+          aria-label={t("accordion.delete")}
           style={s.deleteBtn(del.isPending)}
         >
           <Icon.Trash size={14} style={del.isPending ? s.spin : undefined} />

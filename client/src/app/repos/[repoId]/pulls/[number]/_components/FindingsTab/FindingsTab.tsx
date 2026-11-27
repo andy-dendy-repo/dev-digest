@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { SectionLabel, EmptyState } from "@devdigest/ui";
 import type { ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import { RunHistory } from "../RunHistory";
@@ -32,6 +33,7 @@ export function FindingsTab({
   onDelete,
   onRunDone,
 }: FindingsTabProps) {
+  const t = useTranslations("prReview");
   const running = liveRunIds.length > 0;
   const runs = prRuns ?? [];
   const runById = runsById(runs);
@@ -52,9 +54,9 @@ export function FindingsTab({
         <div style={s.timelineSection}>
           <SectionLabel
             icon="Activity"
-            right={<span style={s.sectionHint}>runs &amp; commits · newest first</span>}
+            right={<span style={s.sectionHint}>{t("timeline.hint")}</span>}
           >
-            Timeline
+            {t("timeline.title")}
           </SectionLabel>
           <RunHistory
             runs={runs}
@@ -67,15 +69,15 @@ export function FindingsTab({
         </div>
       )}
 
-      <SectionLabel icon="AlertOctagon" right={<span style={s.sectionHint}>grouped by run · newest first</span>}>
-        Review runs
+      <SectionLabel icon="AlertOctagon" right={<span style={s.sectionHint}>{t("reviewRuns.hint")}</span>}>
+        {t("reviewRuns.title")}
       </SectionLabel>
       {reviews.length === 0
         ? !running && (
             <EmptyState
               icon="Sparkles"
-              title="No findings yet"
-              body="Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+              title={t("reviewRuns.emptyTitle")}
+              body={t("reviewRuns.emptyBody")}
             />
           )
         : reviews.map((review, i) => (

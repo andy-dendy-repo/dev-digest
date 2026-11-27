@@ -1,18 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../../../../../../messages/en/prReview.json";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
 import { VerdictBanner } from "./VerdictBanner";
 
 afterEach(cleanup);
 
-function renderWithIntl(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      {ui}
-    </NextIntlClientProvider>,
-  );
-}
+const renderWithIntl = (ui: React.ReactElement) => renderWithProviders(ui);
 
 describe("VerdictBanner (smoke)", () => {
   it("shows verdict label + score + finding/blocker counts", () => {

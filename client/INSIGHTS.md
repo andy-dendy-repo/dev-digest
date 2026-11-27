@@ -22,11 +22,14 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-27 — Query keys of one PR are siblings, not parent/child.** Keep `runKeys.history(prId)` and `runKeys.active(prId)` as `["runs","history",id]` / `["runs","active",id]`, because TanStack invalidation matches by prefix: nesting `active` under `history` makes "delete run" also refetch the 4 s active-run poll. Check `lib/hooks/query-keys.test.tsx` when adding keys. (`client/src/lib/hooks/reviews.ts`)
 - **2026-11-27 — New component tests use `renderWithProviders` from `@/test/render`.** It loads every `messages/en` namespace (as production does), a retry-less QueryClient and ToastProvider, and returns `user` (userEvent). Mock data hooks per module path (`vi.mock("@/lib/hooks/pulls")`) — there is no hooks barrel any more. (`client/src/test/render.tsx`)
 - **2026-11-27 — `global-error.tsx` has no next-intl provider.** It replaces the root layout, so `useTranslations` throws there; import `messages/en/common.json` directly and re-import `globals.css`. `error.tsx` / `not-found.tsx` sit inside the layout and can use `useTranslations`. (`client/src/app/global-error.tsx`)
+- **2026-11-27 — Supersedes "Cost “no data” is “—”, never “$0.00”" (2026-11-21):** the rule stands, but labels now come from `useFormat()` (`lib/use-format.ts`): `costParts`/`tokenParts`/`secondsOf` in `lib/format-cost.ts` return numbers only, and `$`, `K`/`M`, `s` and `—` live in `messages/en/common.json › format`. Don't build unit text in a helper. (`client/src/lib/format-cost.ts`)
+- **2026-11-27 — Supersedes "Component tests load ONE next-intl namespace" (2026-11-21):** shared formatters and the toast read `common`, so a one-namespace wrapper now logs `MISSING_MESSAGE`. Render with `renderWithProviders` (all namespaces); `client-messages.test.ts` is what guards the client namespace list. (`client/src/test/render.tsx`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
 - **2026-11-21 — `@testing-library/user-event` ^14.6 is installed (added for M1 severity filter).** Use `userEvent.setup()` in new client tests; older tests (FindingCard, RunTraceDrawer, SettingsApiKeys) still use `fireEvent` and were left as is. (`client/package.json`)
 - **2026-11-21 — `Toggle` has `role="switch"` but no accessible name.** Query it with `getByRole("switch")` (only one per FindingsPanel); `{ name: /hide low/i }` won't match because the label text is a sibling, not a label. (`client/src/vendor/ui/primitives/Toggle.tsx`)
+- **2026-11-27 — Interpolating markup into a message.** Use `t.rich("key", { settings: (chunks) => <a …>{chunks}</a> })` with `<settings>…</settings>` tags in the JSON instead of splitting a sentence into several keys around a link or `<kbd>`. (`client/src/app/onboarding/_components/AddRepoView/AddRepoView.tsx`)
 
 ## Recurring Errors & Fixes
 <!-- Exact error message → fix. -->

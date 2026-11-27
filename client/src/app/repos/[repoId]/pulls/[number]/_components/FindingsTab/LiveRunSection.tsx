@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Button, SectionLabel } from "@devdigest/ui";
 import { useCancelRun } from "@/lib/hooks/reviews";
 import { RunStatus } from "../RunStatus";
@@ -16,6 +17,7 @@ export function LiveRunSection({
   onOpenTrace: (runId: string) => void;
   onRunDone: () => void;
 }) {
+  const t = useTranslations("prReview");
   const cancel = useCancelRun();
   const firstRunId = runIds[0];
 
@@ -33,7 +35,7 @@ export function LiveRunSection({
                 loading={cancel.isPending}
                 onClick={() => runIds.forEach((id) => cancel.mutate(id))}
               >
-                Cancel
+                {t("live.cancel")}
               </Button>
               <Button
                 kind="ghost"
@@ -41,22 +43,20 @@ export function LiveRunSection({
                 icon="FileText"
                 onClick={() => firstRunId && onOpenTrace(firstRunId)}
               >
-                Open run trace
+                {t("live.openTrace")}
               </Button>
             </div>
           }
         >
-          Live review
+          {t("live.title")}
         </SectionLabel>
         <RunStatus runIds={runIds} onDone={onRunDone} />
       </div>
 
       <div style={s.reviewInProgress}>
         <Icon.RefreshCw size={16} style={s.spinner} />
-        <span style={s.reviewInProgressText}>Review in progress…</span>
-        <span style={s.reviewInProgressSub}>
-          the agent is analyzing the diff — this can take a while on large PRs.
-        </span>
+        <span style={s.reviewInProgressText}>{t("live.inProgress")}</span>
+        <span style={s.reviewInProgressSub}>{t("live.inProgressSub")}</span>
       </div>
     </>
   );

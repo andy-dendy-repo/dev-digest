@@ -4,9 +4,9 @@
  * tokens (never a fake "$0.00").
  */
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../messages/en/prReview.json";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
+import prReview from "../../../messages/en/prReview.json";
 import { RunCostBadge, type RunCostBadgeVariant } from "./RunCostBadge";
 
 afterEach(cleanup);
@@ -17,11 +17,7 @@ function renderBadge(props: {
   tokensOut?: number | null;
   variant?: RunCostBadgeVariant;
 }) {
-  render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <RunCostBadge {...props} />
-    </NextIntlClientProvider>,
-  );
+  renderWithProviders(<RunCostBadge {...props} />);
   return screen.getByTestId("run-cost");
 }
 
@@ -64,6 +60,6 @@ describe("RunCostBadge — no data", () => {
   });
 
   it("explains the number in a tooltip", () => {
-    expect(renderBadge({ costUsd: 0.014 })).toHaveAttribute("title", messages.cost.title);
+    expect(renderBadge({ costUsd: 0.014 })).toHaveAttribute("title", prReview.cost.title);
   });
 });

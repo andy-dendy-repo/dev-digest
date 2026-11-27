@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button, Dropdown } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
@@ -10,6 +11,7 @@ import { s } from "./styles";
 
 /** Left column: every agent (the active one highlighted) + "Add". */
 export function AgentSidebar({ agents, activeId, tab }: { agents: Agent[]; activeId: string; tab: string }) {
+  const t = useTranslations("agents");
   const router = useRouter();
   const update = useUpdateAgent();
 
@@ -17,16 +19,16 @@ export function AgentSidebar({ agents, activeId, tab }: { agents: Agent[]; activ
     <div style={s.sidebar}>
       <div style={s.sidebarHeader}>
         <div style={s.sidebarTitleRow}>
-          <h1 style={s.sidebarTitle}>Agents</h1>
+          <h1 style={s.sidebarTitle}>{t("editor.listTitle")}</h1>
           <Dropdown
             width={210}
             align="right"
             trigger={
               <Button kind="primary" size="sm" icon="Plus">
-                Add
+                {t("editor.add")}
               </Button>
             }
-            items={[{ label: "Create from scratch", icon: "Edit", onClick: () => router.push("/agents") }]}
+            items={[{ label: t("editor.createFromScratch"), icon: "Edit", onClick: () => router.push("/agents") }]}
           />
         </div>
       </div>

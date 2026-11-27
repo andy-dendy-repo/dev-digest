@@ -39,6 +39,11 @@
 
   --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.6);
   --shadow-drawer: -8px 0 32px rgba(0, 0, 0, 0.45);
+  --shadow-toast: 0 6px 24px rgba(0, 0, 0, 0.3);
+  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --on-accent: #ffffff;
+  --crit-border: rgba(239, 68, 68, 0.25);
+  --violet: #8b5cf6;
   --code-add: rgba(16, 185, 129, 0.1);
   --code-del: rgba(239, 68, 68, 0.1);
   --code-add-text: #10b981;
@@ -78,6 +83,11 @@
 
   --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.18);
   --shadow-drawer: -8px 0 32px rgba(0, 0, 0, 0.12);
+  --shadow-toast: 0 6px 24px rgba(0, 0, 0, 0.3);
+  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --on-accent: #ffffff;
+  --crit-border: rgba(239, 68, 68, 0.25);
+  --violet: #8b5cf6;
   --code-add: rgba(5, 150, 105, 0.09);
   --code-del: rgba(220, 38, 38, 0.08);
   --code-add-text: #059669;

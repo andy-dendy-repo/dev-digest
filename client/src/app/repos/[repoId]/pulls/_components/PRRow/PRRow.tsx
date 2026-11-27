@@ -72,7 +72,7 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
         {/* Sum over the PR's completed runs; "—" when none has a cost. */}
         <RunCostBadge costUsd={pr.cost_usd} variant="compact" />
       </div>
-      <div style={s.updatedCell}>{relativeTime(pr.updated_at)}</div>
+      <div style={s.updatedCell}>{t("list.relativeTime", relativeTime(pr.updated_at))}</div>
     </div>
   );
 }

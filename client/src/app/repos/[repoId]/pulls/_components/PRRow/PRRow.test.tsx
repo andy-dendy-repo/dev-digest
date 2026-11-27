@@ -4,11 +4,10 @@
  * the PR has no costed run.
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
 import type { PrMeta } from "@devdigest/shared";
-import messages from "../../../../../../../messages/en/prReview.json";
+import { renderWithProviders } from "@/test/render";
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -44,11 +43,7 @@ function pr(o: Partial<PrMeta>): PrMeta {
 }
 
 function renderRow(p: PrMeta) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <PRRow pr={p} repoId="repo-1" />
-    </NextIntlClientProvider>,
-  );
+  return renderWithProviders(<PRRow pr={p} repoId="repo-1" />);
 }
 
 describe("PRRow — COST column", () => {

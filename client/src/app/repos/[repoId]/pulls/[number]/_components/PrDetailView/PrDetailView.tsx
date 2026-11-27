@@ -4,6 +4,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Skeleton, ErrorState } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
@@ -19,12 +20,13 @@ import { usePrDetail } from "./usePrDetail";
 import { s } from "./styles";
 
 export function PrDetailView({ repoId, number }: { repoId: string; number: string }) {
+  const t = useTranslations("prReview");
   const d = usePrDetail(repoId, number);
   const { pr, prId, reviews, liveRunIds, traceRunId } = d;
 
   const crumb = [
     { label: d.repoFullName ?? repoId, mono: true, href: `/repos/${repoId}/pulls` },
-    { label: "Pull Requests", href: `/repos/${repoId}/pulls` },
+    { label: t("list.breadcrumb"), href: `/repos/${repoId}/pulls` },
     { label: `#${number}`, mono: true },
   ];
 
@@ -54,8 +56,8 @@ export function PrDetailView({ repoId, number }: { repoId: string; number: strin
       <AppShell crumb={crumb}>
         <ErrorState
           fullScreen
-          title="Couldn't load this pull request"
-          body={d.error instanceof ApiError ? d.error.message : `PR #${number} could not be loaded.`}
+          title={t("detail.loadErrorTitle")}
+          body={d.error instanceof ApiError ? d.error.message : t("detail.loadErrorBody", { number })}
           onRetry={() => d.refetch()}
         />
       </AppShell>
@@ -89,7 +91,7 @@ export function PrDetailView({ repoId, number }: { repoId: string; number: strin
               prCommits={pr.commits}
               onOpenTrace={d.openTrace}
               onDelete={(runId) => {
-                if (window.confirm("Delete this run from history? (its logs are removed too)"))
+                if (window.confirm(t("detail.confirmDeleteRun")))
                   d.deleteRun(runId);
               }}
               onRunDone={d.onRunDone}

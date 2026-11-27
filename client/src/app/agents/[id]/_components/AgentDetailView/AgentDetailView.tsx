@@ -3,6 +3,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge, Button, ErrorState, Icon, Skeleton } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
@@ -14,6 +15,7 @@ import { resolveTab } from "./helpers";
 import { s } from "./styles";
 
 export function AgentDetailView({ id }: { id: string }) {
+  const t = useTranslations("agents");
   const search = useSearchParams();
   const router = useRouter();
   const { data: agents } = useAgents();
@@ -27,9 +29,9 @@ export function AgentDetailView({ id }: { id: string }) {
   };
 
   const crumb = [
-    { label: "Skills Lab" },
-    { label: "Agents", href: "/agents" },
-    { label: agent?.name ?? "Agent" },
+    { label: t("list.breadcrumbLab") },
+    { label: t("list.breadcrumb"), href: "/agents" },
+    { label: agent?.name ?? t("editor.agentFallback") },
   ];
 
   if (isError || (!isLoading && !agent)) {
@@ -37,8 +39,8 @@ export function AgentDetailView({ id }: { id: string }) {
       <AppShell crumb={crumb}>
         <ErrorState
           fullScreen
-          title="Couldn’t load this agent"
-          body={error instanceof ApiError ? error.message : "The agent could not be loaded."}
+          title={t("editor.loadErrorTitle")}
+          body={error instanceof ApiError ? error.message : t("editor.loadErrorBody")}
           onRetry={() => refetch()}
         />
       </AppShell>
@@ -63,10 +65,10 @@ export function AgentDetailView({ id }: { id: string }) {
               <Badge color="var(--text-secondary)" mono>
                 {agent.provider}/{agent.model}
               </Badge>
-              {!agent.enabled && <Badge color="var(--text-muted)">disabled</Badge>}
+              {!agent.enabled && <Badge color="var(--text-muted)">{t("editor.disabled")}</Badge>}
               <div style={s.paneActions}>
                 <Button kind="secondary" size="sm" icon="GitPullRequest" onClick={() => router.push("/")}>
-                  Run on a PR…
+                  {t("editor.runOnPr")}
                 </Button>
               </div>
             </div>

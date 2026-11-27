@@ -1,10 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
+import { screen, cleanup } from "@testing-library/react";
 import type { Agent } from "@devdigest/shared";
-import messages from "../../../../../../messages/en/agents.json";
-import { ToastProvider } from "@/lib/toast";
+import { renderWithProviders } from "@/test/render";
 
 // Mock the data hooks so the editor renders without a network/query client.
 vi.mock("@/lib/hooks/agents", () => ({
@@ -31,17 +28,9 @@ const AGENT: Agent = {
   version: 1,
 };
 
-function renderWithIntl(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ agents: messages }}>
-      <ToastProvider>{ui}</ToastProvider>
-    </NextIntlClientProvider>,
-  );
-}
-
 describe("A2 Agent Editor (smoke)", () => {
   it("renders the Config tab fields", () => {
-    renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={() => {}} />);
+    renderWithProviders(<AgentEditor agent={AGENT} tab="config" onTab={() => {}} />);
     expect(screen.getByText("Config")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
     expect(screen.getByText("Save agent")).toBeInTheDocument();
@@ -49,17 +38,10 @@ describe("A2 Agent Editor (smoke)", () => {
 });
 
 describe("A2 Agent Editor — switching agents", () => {
-  const wrap = (agent: Agent) => (
-    <NextIntlClientProvider locale="en" messages={{ agents: messages }}>
-      <ToastProvider>
-        <AgentEditor agent={agent} tab="config" onTab={() => {}} />
-      </ToastProvider>
-    </NextIntlClientProvider>
-  );
+  const wrap = (agent: Agent) => <AgentEditor agent={agent} tab="config" onTab={() => {}} />;
 
   it("discards unsaved edits and shows the new agent's values", async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(wrap(AGENT));
+    const { user, rerender } = renderWithProviders(wrap(AGENT));
     const name = screen.getByDisplayValue("Security Reviewer");
     await user.clear(name);
     await user.type(name, "Unsaved draft");
@@ -73,8 +55,7 @@ describe("A2 Agent Editor — switching agents", () => {
   });
 
   it("keeps edits when the same agent re-renders (e.g. a refetch)", async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(wrap(AGENT));
+    const { user, rerender } = renderWithProviders(wrap(AGENT));
     const name = screen.getByDisplayValue("Security Reviewer");
     await user.clear(name);
     await user.type(name, "Draft");

@@ -1,8 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
 import type { RunTrace } from "@devdigest/shared";
-import messages from "../../../../../../../../messages/en/runs.json"; // apps/web/messages/en/runs.json
 
 // Mock the trace hooks so the drawer renders without a query client / SSE.
 const TRACE: RunTrace = {
@@ -30,17 +29,16 @@ import { RunTraceDrawer } from "./RunTraceDrawer";
 
 afterEach(cleanup);
 
-function renderWithIntl(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="en" messages={{ runs: messages }}>
-      <div data-theme="dark">{ui}</div>
-    </NextIntlClientProvider>,
+const renderDrawer = () =>
+  renderWithProviders(
+    <div data-theme="dark">
+      <RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />
+    </div>,
   );
-}
 
 describe("A5 Run Trace drawer (smoke)", () => {
   it("renders the trace tabs and stats", () => {
-    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+    renderDrawer();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
     expect(screen.getByText("Stats")).toBeInTheDocument();
     expect(screen.getByText("2/2 passed")).toBeInTheDocument();
@@ -48,11 +46,14 @@ describe("A5 Run Trace drawer (smoke)", () => {
     // M1 run cost badge — COST stat with ≥ 3 decimals
     expect(screen.getByText("COST")).toBeInTheDocument();
     expect(screen.getByText("$0.012")).toBeInTheDocument();
+    // duration and tokens use the shared formatters (one token style app-wide)
+    expect(screen.getByText("8.2s")).toBeInTheDocument();
+    expect(screen.getByText("12.0K→1.5K")).toBeInTheDocument();
   });
 
-  it("switches to the live log tab", () => {
-    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
-    fireEvent.click(screen.getByText("log"));
+  it("switches to the live log tab", async () => {
+    const { user } = renderDrawer();
+    await user.click(screen.getByText("log"));
     // LiveLogStream renders its filter input
     expect(screen.getByPlaceholderText("Filter log…")).toBeInTheDocument();
   });

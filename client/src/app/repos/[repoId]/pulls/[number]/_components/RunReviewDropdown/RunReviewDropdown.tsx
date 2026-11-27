@@ -55,10 +55,10 @@ export function RunReviewDropdown({
     ? all.map((a) => ({
         label: a.name,
         icon: "Cpu" as const,
-        hint: a.enabled ? a.model : `${a.model} · disabled`,
+        hint: a.enabled ? a.model : t("runReview.disabledHint", { model: a.model }),
         onClick: () => kick({ agentId: a.id }),
       }))
-    : [{ label: "No agents yet — create one", icon: "Plus", muted: true, onClick: () => router.push("/agents") }];
+    : [{ label: t("runReview.noAgents"), icon: "Plus", muted: true, onClick: () => router.push("/agents") }];
 
   const items: DropdownItemDef[] = [
     // Merged/closed PRs can still be reviewed (informational only); lead with a

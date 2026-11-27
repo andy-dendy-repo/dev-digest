@@ -118,7 +118,7 @@ export const cs = {
     borderRadius: 5,
     border: "none",
     background: "var(--accent)",
-    color: "#fff",
+    color: "var(--on-accent)",
     fontSize: 14,
     lineHeight: "18px",
     cursor: "pointer",
@@ -127,7 +127,7 @@ export const cs = {
     justifyContent: "center",
     padding: 0,
     zIndex: 1,
-    boxShadow: "0 1px 3px rgba(0,0,0,.35)",
+    boxShadow: "var(--shadow-control)",
   } satisfies CSSProperties,
   /** Indented rail for threads/composer, aligned under the code (past gutter). */
   thread: {
