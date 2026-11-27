@@ -31,7 +31,8 @@
     "agents": "{count, plural, one {# agent} other {# agents}}",
     "noDescription": "No description",
     "needsVetting": "needs vetting",
-    "vettingTitle": "Imported from someone else — read it before enabling"
+    "vettingTitle": "Imported from someone else — read it before enabling",
+    "toggleEnabled": "Enable {name} for all agents"
   },
   "type": {
     "rubric": "rubric",

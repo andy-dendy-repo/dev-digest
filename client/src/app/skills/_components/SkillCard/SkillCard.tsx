@@ -38,7 +38,13 @@ export function SkillCard({
             {skill.name}
           </span>
         </button>
-        {onToggle && <Toggle on={skill.enabled} onChange={onToggle} size={14} />}
+        {onToggle && (
+          // Toggle has no accessible name of its own: the label gives the switch one.
+          <label style={s.toggleLabel}>
+            <span style={s.srOnly}>{t("card.toggleEnabled", { name: skill.name })}</span>
+            <Toggle on={skill.enabled} onChange={onToggle} size={14} />
+          </label>
+        )}
         <button
           type="button"
           onClick={() => {
