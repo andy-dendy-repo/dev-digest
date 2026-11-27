@@ -30,6 +30,7 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 | server-unit | `server/` | unit (hermetic) | vitest | `server-unit.yml` | no |
 | server-integration | `server/` | integration (real Postgres) | vitest | `server-integration.yml` | **yes** |
 | reviewer-core | `reviewer-core/` | unit (engine) | vitest | `reviewer-core.yml` | no |
+| shared contracts | `server/`+`client/` | `vendor/shared` copies identical | `diff -r` | `shared-contracts.yml` | no |
 | e2e web | `e2e/` | browser e2e (deterministic) | agent-browser + `run.ts` | `e2e-web.yml` | yes (stack) |
 
 ## What each suite covers
@@ -84,6 +85,11 @@ cd e2e && npm install && npm test
   committed file). CI therefore invokes the split with
   `pnpm exec vitest run …` rather than relying on committed `test:unit` /
   `test:integration` scripts.
+- **Server tests are type-checked** with `pnpm exec tsc --noEmit -p tsconfig.test.json`
+  (in `server/`; `pnpm typecheck` covers `src/` only). The `server-unit` typecheck job
+  runs it, followed by the onion-architecture layer check (dependency-cruiser).
+- **`shared-contracts.yml`** fails when `client/src/vendor/shared` differs from
+  `server/src/vendor/shared`.
 - **Hermetic by default.** Reach for `src/adapters/mocks.ts` (MockLLMProvider,
   MockGitClient) rather than real network/keys.
 - **E2E specs are deterministic batch JSON** (`e2e/specs/*.flow.json`) using

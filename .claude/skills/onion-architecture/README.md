@@ -42,3 +42,4 @@ is for, how to maintain the skill, and its version history.
 |---|---|---|
 | 1.0.0 | 2026-11-26 | First version: rings, recipes and per-tool rules for `server/` and `reviewer-core/`; dependency-cruiser layer check with 58 baselined violations; three eval cases |
 | 1.1.0 | 2026-11-26 | After the first eval review: container getters for new repositories/adapters are typed as the port; server-only ports go in the server copy of `vendor/shared/adapters.ts` only; type-check new test files (`pnpm typecheck` skips `test/`); new recipe for adding an input to the review engine; new `engine-readme-context` eval case |
+| 1.2.0 | 2026-11-26 | The layer check and `tsconfig.test.json` (tests type-check, 0 errors) run in CI `server-unit`; the client `vendor/shared` copy is synced and CI keeps it identical, so ports are added to the server copy and synced |

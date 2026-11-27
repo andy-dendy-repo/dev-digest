@@ -10,7 +10,7 @@ description: >
   platform/; and when reviewing or refactoring backend layering. Use it even when the
   request never says "architecture": every backend feature lands in these rings.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   updated: "2026-11-26"
   sources: references.md
 ---
@@ -75,8 +75,8 @@ in the right ring.
 - The layer check exits 0.
 - `pnpm typecheck` passes in `server/`. If `reviewer-core` changed, `npm run typecheck`
   passes there too.
-- New test files type-check. `pnpm typecheck` skips `test/`; see
-  [references/testing.md](references/testing.md#type-check-your-tests-yourself).
+- Tests type-check: `pnpm exec tsc --noEmit -p tsconfig.test.json` (`pnpm typecheck`
+  skips `test/`; see [references/testing.md](references/testing.md#type-check-your-tests-yourself)).
 - Every new port has a real implementation wired in `container.ts` and a fake or mock
   used by a test.
 

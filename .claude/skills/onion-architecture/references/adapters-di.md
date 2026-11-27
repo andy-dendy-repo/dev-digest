@@ -12,8 +12,9 @@ wrong way: the core has to import the adapter folder to see its own dependency. 
 you touch one, move the interface to the core and leave only the class in
 `src/adapters/`.
 
-`client/src/vendor/shared/adapters.ts` is an old, unsynced copy, and the UI uses no
-ports. Add a port to the server copy only.
+Add a port to the server copy of `vendor/shared/adapters.ts`, then sync the client
+copy (it must stay identical, see [zod.md](zod.md)). The UI uses no ports, but it does
+read a few plain types from that file (`ModelInfo`, `GitCommit`).
 
 A port's signature uses domain types only. SDK types (`Octokit`, `SimpleGit`,
 `OpenAI.ChatCompletion`, `SgNode`…) stop at the adapter.

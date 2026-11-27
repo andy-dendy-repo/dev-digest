@@ -173,7 +173,11 @@ export default function PRDetailPage() {
 
       {prId && traceRunId && (
         <RunTraceDrawer
+          key={traceRunId}
           runId={traceRunId}
+          // A live run streams its log over SSE; the drawer falls back to the
+          // persisted trace once the run leaves `activeRuns`.
+          running={liveRunIds.includes(traceRunId)}
           prNumber={pr.number}
           findings={runs.find((r) => r.run_id === traceRunId)?.findings ?? []}
           agentName={runs.find((r) => r.run_id === traceRunId)?.agent_name ?? null}

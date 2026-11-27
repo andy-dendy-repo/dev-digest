@@ -44,6 +44,7 @@ export default async function pollingRoutes(appBase: FastifyInstance) {
           deletions: pr.deletions,
           filesCount: pr.files_count,
           status: pr.status,
+          openedAt: pr.opened_at ? new Date(pr.opened_at) : null,
           updatedAt: pr.updated_at ? new Date(pr.updated_at) : null,
         })
         .onConflictDoUpdate({

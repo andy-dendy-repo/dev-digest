@@ -18,3 +18,18 @@ export function visibleFindings(
     (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
   );
 }
+
+const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+/**
+ * A bare key press meant as a panel shortcut: no modifier (so Cmd/Ctrl+A,
+ * Ctrl+D… stay browser chords) and not typed into a form field or editor.
+ */
+export function isPlainShortcut(
+  e: Pick<KeyboardEvent, "metaKey" | "ctrlKey" | "altKey" | "target">,
+): boolean {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false;
+  const el = e.target as HTMLElement | null;
+  if (!el) return true;
+  return !TYPING_TAGS.has(el.tagName) && !el.isContentEditable;
+}

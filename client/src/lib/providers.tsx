@@ -13,6 +13,15 @@ import { RepoProvider } from "./repo-context";
 import { ToastProvider, notify } from "./toast";
 import { ApiError } from "./api";
 
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: {
+      /** `false` when the caller shows the error inline itself (form errors). */
+      errorToast?: boolean;
+    };
+  }
+}
+
 function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   return "Something went wrong";
@@ -29,8 +38,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             refetchOnWindowFocus: false,
           },
         },
-        // Global error surfacing (errors anywhere → toast). Mutations always
-        // toast (they are user actions). Queries only toast on network/5xx —
+        // Global error surfacing (errors anywhere → toast). Mutations toast
+        // (they are user actions) unless they opt out with
+        // `meta: { errorToast: false }` because the form shows the error inline. Queries only toast on network/5xx —
         // expected 4xx like a 404 "no tour yet" stay silent for inline empty states.
         queryCache: new QueryCache({
           onError: (err) => {
@@ -39,7 +49,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }),
         mutationCache: new MutationCache({
-          onError: (err) => notify.error(errorMessage(err)),
+          onError: (err, _vars, _ctx, mutation) => {
+            if (mutation.meta?.errorToast === false) return;
+            notify.error(errorMessage(err));
+          },
         }),
       })
   );

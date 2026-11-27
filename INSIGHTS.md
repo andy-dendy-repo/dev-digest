@@ -41,6 +41,8 @@ Researched 40 sources and wrote `.claude/skills/frontend-ui-architecture/` (SKIL
 ### 2026-11-26 — onion-architecture skill
 Added `.claude/skills/onion-architecture/` with rings, per-tool references and a dependency-cruiser layer check. Existing debt (58 violations) is baselined in `assets/known-violations.json`, so the check fails only on new ones. In a skill-creator eval, rule adherence was 100% with the skill and 57% without; the biggest gain was new endpoints, which otherwise copy the Drizzle-in-route debt.
 Not done: layer check in CI, and refactoring the baselined debt.
+### 2026-11-26 — Whole-project architecture audit + phase 0/1
+Audit against onion-architecture, frontend-ui-architecture, React/Next skills produced a phased plan (bugs → guardrails → backend ports/UoW → frontend data layer/Next). Done: phase 0 bugs, `vendor/shared` copies made identical with CI `shared-contracts.yml`, CI layer check + test type-check. Deferred: ESLint (needs a debt policy; `server/package.json` must not be committed), dead-code removal (milestones may re-add features).
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

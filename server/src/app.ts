@@ -172,8 +172,16 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     }
     app.log.error(err);
     const e = err as { statusCode?: number; message?: string };
-    reply.status(e.statusCode ?? 500).send({
-      error: { code: 'internal_error', message: e.message ?? 'Internal error' },
+    const status = e.statusCode ?? 500;
+    // Fastify's own client errors (bad JSON, 404, 413, 415…) carry safe,
+    // useful messages. Anything else is unexpected: its message can expose
+    // internals (SQL, file paths, SDK payloads), so it stays in the log only.
+    const clientError = status >= 400 && status < 500;
+    reply.status(status).send({
+      error: {
+        code: 'internal_error',
+        message: clientError && e.message ? e.message : 'Internal error',
+      },
     });
   });
 

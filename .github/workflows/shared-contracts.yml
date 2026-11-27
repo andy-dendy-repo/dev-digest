@@ -1,0 +1,36 @@
+# Shared contracts drift guard.
+#
+# `@devdigest/shared` exists twice: server/src/vendor/shared (source of truth,
+# also used by reviewer-core) and client/src/vendor/shared (a copy — the
+# modules are not a workspace). The copies must stay byte-identical; sync with:
+#   rsync -a --delete server/src/vendor/shared/ client/src/vendor/shared/
+name: shared contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/src/vendor/shared/**'
+      - 'client/src/vendor/shared/**'
+      - '.github/workflows/shared-contracts.yml'
+  pull_request:
+    paths:
+      - 'server/src/vendor/shared/**'
+      - 'client/src/vendor/shared/**'
+      - '.github/workflows/shared-contracts.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: server and client copies are identical
+        run: |
+          if ! diff -r server/src/vendor/shared client/src/vendor/shared; then
+            echo "::error::client/src/vendor/shared drifted from server/src/vendor/shared."
+            echo "Sync: rsync -a --delete server/src/vendor/shared/ client/src/vendor/shared/"
+            exit 1
+          fi

@@ -23,6 +23,8 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 
 ## Session Notes
 <!-- ### YYYY-MM-DD — <task>, then 2–4 lines. -->
+### 2026-11-26 — Untrusted fence hardening
+`wrapUntrusted` now neutralises any closing-tag spelling (case, whitespace); the server's `taskLine` puts PR title + author inside an `<untrusted source="pr-title">` block, as `INJECTION_GUARD` already claimed.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

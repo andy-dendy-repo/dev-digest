@@ -20,9 +20,9 @@ again deep in the core adds noise and suggests the boundary is in the wrong plac
 - `@devdigest/shared` (source of truth: `server/src/vendor/shared/`) holds Zod schemas
   and `z.infer` types shared by API, engine and UI. They form the innermost ring and
   import only `zod`.
-- `client/src/vendor/shared` is a **separate copy** that has already drifted. Run
-  `diff -r server/src/vendor/shared client/src/vendor/shared` before changing a
-  contract the UI reads, and update both copies.
+- `client/src/vendor/shared` is a **separate copy** that CI keeps byte-identical
+  (`shared-contracts.yml`). Edit the server copy, then sync with
+  `rsync -a --delete server/src/vendor/shared/ client/src/vendor/shared/`.
 - A shape that only one module needs internally belongs in `<m>/domain.ts`, not in
   shared. Keep shared for what crosses a process or package boundary.
 - Derive types with `z.infer<typeof Schema>`. Do not hand-write a parallel interface

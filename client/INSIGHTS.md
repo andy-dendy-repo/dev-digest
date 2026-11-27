@@ -18,6 +18,7 @@ Record with `/engineering-insights` (capture · wrap-up · review). Rules belong
 - **2026-11-21 — Findings counters count before their own filter.** Compute per-severity counts from the list after "Hide low confidence" but before the severity filter (`countBySeverity(confidentFindings(...))`), because counting the final list would zero the other chips and counting raw findings would disagree with the list once the toggle is on. (`client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx`)
 - **2026-11-21 — Popovers in the PR list need a portal + `stopPropagation`.** Render them with `createPortal` + `position: fixed` (see `panelPosition`), because the PR table has `overflow: hidden` and clips absolute panels; and stop click propagation on trigger and panel, because React portal events still bubble through the React tree to `PRRow`'s navigating `onClick`. (`client/src/components/findings-preview/FindingsPreview.tsx`)
 - **2026-11-21 — Severity order/counting lives in `src/lib/findings-severity.ts`.** Use `SEVERITIES`, `countBySeverity`, `bySeverityThenConfidence` from there, because `src/components/*` must not import from route folders and the in-run filter, timeline icons and PR list column must agree. (`client/src/lib/findings-severity.ts`)
+- **2026-11-26 — Mutations that show their error inline set `meta: { errorToast: false }`.** The global `MutationCache.onError` toasts every failed mutation, so a local `notify.error` in a catch, or an inline form error without the opt-out, reports the failure twice. (`client/src/lib/providers.tsx`, `useAddRepo` in `client/src/lib/hooks/core.ts`)
 
 ## Tool & Library Notes
 <!-- Dependency quirks, with library + version. -->
@@ -36,6 +37,8 @@ Added `RunCostBadge` (compact / total / split) + `format-cost.ts`; shown in the 
 Added `SeverityFilter` (3 severity pills, `aria-pressed`, colours from `SEV`, labels in `prReview.panel.severityCount.*`) to `FindingsPanel`; filter state is local per run and combines with Hide low confidence. Helpers `confidentFindings` / `countBySeverity` / `visibleFindings(…, severity)` + 3 helper tests and 3 RTL flow tests. Skills `react-best-practices` and `react-testing-library` did NOT auto-trigger during planning — invoked manually after the user asked; `engineering-insights` invoked manually per CLAUDE.md.
 ### 2026-11-21 — M1 findings preview (timeline + PR list)
 Added `FindingsPreview` (severity icons → portalled read-only panel) to the Agent runs timeline (`findingsByRun` built in `FindingsTab`) and a new FINDINGS column in the PR list (`PrMeta.latest_findings`). Moved severity helpers to `src/lib/findings-severity.ts`. Spec/plan moved to root `specs/` (now server + client).
+### 2026-11-26 — Phase 0 client bug fixes
+Finding shortcuts act in one panel only (`useFindingShortcuts` owner stack) and ignore Cmd/Ctrl chords; no double error toasts; trace drawer streams live runs (`running` + `key`); `ConfigTab` reset via `key={agent.id}` instead of an effect. `vendor/shared` synced from the server copy.
 
 ## Open Questions
 <!-- Unresolved or unverified items. -->

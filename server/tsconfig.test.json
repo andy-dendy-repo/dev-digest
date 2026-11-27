@@ -1,0 +1,8 @@
+{
+  // Type-checks the test suite too. `tsconfig.json` (pnpm typecheck) covers
+  // only src/, and Vitest strips types, so test-only type errors would
+  // otherwise go unnoticed. CI runs: pnpm exec tsc --noEmit -p tsconfig.test.json
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}
