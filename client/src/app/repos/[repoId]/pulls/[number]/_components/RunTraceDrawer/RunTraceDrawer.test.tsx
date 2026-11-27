@@ -7,7 +7,15 @@ import type { RunTrace } from "@devdigest/shared";
 const TRACE: RunTrace = {
   config: { agent: "Security", version: "1", provider: "openai", model: "gpt-4.1", pr: 482, source: "local" },
   stats: { duration_ms: 8200, tokens_in: 12000, tokens_out: 1500, cost_usd: 0.0123, findings: 2, grounding: "2/2 passed" },
-  prompt_assembly: { system: "You are a reviewer.", skills: "### skill", memory: null, specs: null, user: "Review PR #482" },
+  prompt_assembly: {
+    system: "You are a reviewer.",
+    skills: "### test-corner-cases",
+    memory: null,
+    specs: null,
+    user: "Review PR #482",
+    section_tokens: { system: 40, skills: 212, user: 900 },
+    skills_detail: [{ id: "s1", name: "test-corner-cases", version: 3, tokens: 212 }],
+  },
   tool_calls: [{ tool: "review_file", args: "src/config.ts", meta: "single-pass", ms: 1200 }],
   raw_output: '{"verdict":"request_changes"}',
   memory_pulled: [{ pr: 471, text: "rate-limit public endpoints" }],
@@ -49,6 +57,16 @@ describe("A5 Run Trace drawer (smoke)", () => {
     // duration and tokens use the shared formatters (one token style app-wide)
     expect(screen.getByText("8.2s")).toBeInTheDocument();
     expect(screen.getByText("12.0K→1.5K")).toBeInTheDocument();
+  });
+
+  it("prompt assembly shows tokens per block and the skills in the skills block", async () => {
+    const { user } = renderDrawer();
+    await user.click(screen.getByText("Prompt assembly"));
+    expect(screen.getByText("Skills (dynamic)")).toBeInTheDocument();
+    expect(screen.getByText("212 tok")).toBeInTheDocument();
+    expect(screen.getByText("40 tok")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Skills in this prompt" });
+    expect(list).toHaveTextContent("test-corner-cases · v3 · 212 tok");
   });
 
   it("switches to the live log tab", async () => {

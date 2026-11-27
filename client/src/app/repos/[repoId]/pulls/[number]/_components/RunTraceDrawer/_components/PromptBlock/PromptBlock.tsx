@@ -21,7 +21,21 @@ const miniBtnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export function PromptBlock({ label, text, color }: { label: string; text: string; color: string }) {
+export function PromptBlock({
+  label,
+  text,
+  color,
+  tokens,
+  details,
+}: {
+  label: string;
+  text: string;
+  color: string;
+  /** Tokens this segment adds to the prompt (absent on pre-M2 traces). */
+  tokens?: number;
+  /** Always-visible line under the header (e.g. the skills in this block). */
+  details?: React.ReactNode;
+}) {
   const t = useTranslations("runs");
   const [open, setOpen] = React.useState(false);
   const [full, setFull] = React.useState(false);
@@ -32,6 +46,7 @@ export function PromptBlock({ label, text, color }: { label: string; text: strin
       <div onClick={() => setOpen((o) => !o)} style={s.promptHead}>
         <span style={s.promptDot(color)} />
         <span style={s.promptLabel}>{label}</span>
+        {tokens !== undefined && <span style={s.promptTokens}>{t("trace.prompt.tokens", { tokens })}</span>}
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
@@ -62,6 +77,7 @@ export function PromptBlock({ label, text, color }: { label: string; text: strin
           </span>
         </span>
       </div>
+      {details}
       {open && (
         <pre className="mono" style={s.promptPre}>
           {text || "—"}

@@ -31,6 +31,8 @@ export function createReviewService(container: Container): ReviewService {
     llm: (id) => container.llm(id),
     repoIntel: () => container.repoIntel,
     runBus: container.runBus,
+    skills: container.skillsRepo,
+    countTokens: (text) => container.tokenizer.count(text),
   });
   return new ReviewService({
     reviews: container.reviewRepo,
