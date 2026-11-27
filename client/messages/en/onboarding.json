@@ -13,5 +13,8 @@
   },
   "loadError": {
     "title": "Couldn’t load the onboarding tour"
+  },
+  "meta": {
+    "title": "Add repository"
   }
 }
