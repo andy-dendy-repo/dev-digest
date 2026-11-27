@@ -25,12 +25,19 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
 A route may:
 - validate and parse params, query and body with a Zod schema (`fastify-type-provider-zod`);
+- declare its 2xx body as `schema.response` from the `@devdigest/shared` contract. The
+  zod serializer **parses** the body: unknown keys are dropped, `.default()`s are filled
+  in, and a mismatch becomes a generic 500 (`isResponseSerializationError` in `app.ts`).
+  So a contract with defaults (`Settings`) or a stored document that may predate its
+  contract (`RunTrace`) stays without one;
 - resolve the request context (`getContext`);
 - call one use case;
 - set headers, status codes for success variants, SSE framing.
 
 Everything else (queries, loops over rows, calls to GitHub or an LLM, deciding what a
-status means) belongs in the service.
+status means) belongs in the service. Workspace ownership of an `:id` is a service rule
+too (`ReviewService.assertRunInWorkspace` → 404); only a tenant-agnostic facade gets a
+presentation-side guard (`_shared/ownership.ts`, used by repo-intel routes).
 
 ## Wiring services
 

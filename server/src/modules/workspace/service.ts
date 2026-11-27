@@ -1,17 +1,5 @@
 import type { ReposPort } from '../repos/ports.js';
-
-/** `GET /workspace` payload: where clones live + a summary of the workspace's repos. */
-export interface WorkspaceSummary {
-  workspaceId: string;
-  cloneDir: string;
-  repos: {
-    id: string;
-    full_name: string;
-    clone_path: string | null;
-    last_polled_at: string | null;
-    cloned: boolean;
-  }[];
-}
+import type { WorkspaceSummary } from './domain.js';
 
 export interface WorkspaceServiceDeps {
   repos: Pick<ReposPort, 'list'>;

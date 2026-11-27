@@ -1,4 +1,5 @@
 import type {
+  ActiveRun,
   Agent,
   Finding,
   FindingRecord,
@@ -13,7 +14,7 @@ import type {
 import type { RunBus } from '../../platform/sse.js';
 import type { AgentsPort } from '../agents/ports.js';
 import type { RepoIntel } from '../repo-intel/types.js';
-import type { ActiveRun, NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
+import type { NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
 
 /**
  * Ports of the reviews module (Application ring). Signatures use domain types
@@ -100,6 +101,8 @@ export interface ReviewsPort {
 export interface RunsPort {
   /** Create a run in `running` state; returns its id (= the runId). */
   createAgentRun(values: NewAgentRun): Promise<string>;
+  /** Whether a run exists in the workspace (ownership check for `/runs/:id/*`). */
+  isRunInWorkspace(workspaceId: string, runId: string): Promise<boolean>;
   completeAgentRun(runId: string, values: RunCompletion): Promise<void>;
   /** Persist the WHOLE run log as ONE document (upsert by runId). */
   saveRunTrace(runId: string, trace: RunTrace): Promise<void>;

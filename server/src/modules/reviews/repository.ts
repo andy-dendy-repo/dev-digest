@@ -1,7 +1,7 @@
 import type { DbOrTx } from '../../db/client.js';
-import type { Finding, FindingRecord, Intent, ReviewRecord, RunSummary, RunTrace } from '@devdigest/shared';
+import type { ActiveRun, Finding, FindingRecord, Intent, ReviewRecord, RunSummary, RunTrace } from '@devdigest/shared';
 import type { FindingRow } from '../../db/rows.js';
-import type { ActiveRun, NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
+import type { NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
 import type {
   NewReview,
   Persisted,
@@ -99,6 +99,11 @@ export class ReviewRepository implements ReviewWritePort, ReviewsPort, RunsPort,
   /** Delete one agent run (+ its trace via FK cascade). Workspace-scoped. */
   deleteAgentRun(workspaceId: string, runId: string): Promise<boolean> {
     return runRepo.deleteAgentRun(this.db, workspaceId, runId);
+  }
+
+  /** Whether a run exists in the workspace (ownership check for `/runs/:id/*`). */
+  isRunInWorkspace(workspaceId: string, runId: string): Promise<boolean> {
+    return runRepo.isRunInWorkspace(this.db, workspaceId, runId);
   }
 
   /** Mark a still-running run as cancelled (no-op if it already finished). */

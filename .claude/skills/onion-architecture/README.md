@@ -1,6 +1,6 @@
 # onion-architecture
 
-**Version:** 1.2.5 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
+**Version:** 1.2.6 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
 
 This skill says which ring each backend file belongs to, which way imports may point, and
 where ports, repositories, adapters and Zod parsing live. It also ships a dependency-cruiser
@@ -48,3 +48,4 @@ is for, how to maintain the skill, and its version history.
 | 1.2.3 | 2026-11-27 | Baseline 45 → 36 after the agents/repos refactor (B3); `adapters-di.md` lists the new ports, the `JobQueue` port and composition-root job registration; `examples.md` §2 marked as fixed |
 | 1.2.4 | 2026-11-27 | Baseline 36 → 25 after the reviews refactor (B4): only repo-intel debt is left; `reviewRepo` is port-typed; `parseUnifiedDiff` lives in `reviews/diff.ts`; `examples.md` §3/§4 marked as fixed; `drizzle.md` notes that the unit of work turns a failed query into a `PersistenceError` |
 | 1.2.5 | 2026-11-27 | Baseline 25 → 0 after the repo-intel refactor (B5): `known-violations.json` is empty; SKILL.md step 3 and `examples.md` intro say so; `adapters-di.md`: `Tokenizer` / `DepGraph` now live in `repo-intel/ports.ts` next to `RepoIntelStore`, `CodeParser`, `CloneReader`; no service takes the container any more |
+| 1.2.6 | 2026-11-27 | `references/fastify.md`: routes declare their 2xx body as `schema.response` from the shared contract, and when not to (the zod serializer drops unknown keys and fills defaults); workspace ownership of an `:id` is a service rule (B6) |

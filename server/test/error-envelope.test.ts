@@ -11,6 +11,7 @@ import { loadConfig } from '../src/platform/config.js';
 import { translateGitHubError } from '../src/adapters/github/errors.js';
 import { ExternalServiceError, NotFoundError } from '../src/platform/errors.js';
 import { TimeoutError } from '../src/platform/resilience.js';
+import { SecretsStatus } from '@devdigest/shared';
 
 const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
 
@@ -64,6 +65,33 @@ describe('global error handler', () => {
       code: 'external_service_error',
       message: 'GitHub request failed (401): Bad credentials',
     });
+    await app.close();
+  });
+
+  it('catches a body that breaks its response schema: generic 500, the raw object is not sent', async () => {
+    const app = await buildApp({ config });
+    app.get(
+      '/__shape',
+      { schema: { response: { 200: SecretsStatus } } },
+      async () => ({ openai: 'sk-live-should-not-leak', anthropic: true, openrouter: true, github: true }),
+    );
+    const res = await app.inject({ method: 'GET', url: '/__shape' });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: { code: 'internal_error', message: 'Internal error' } });
+    expect(res.body).not.toContain('sk-live');
+    await app.close();
+  });
+
+  it('a response schema serializes only the contract keys (extra fields are dropped)', async () => {
+    const app = await buildApp({ config });
+    app.get(
+      '/__extra',
+      { schema: { response: { 200: SecretsStatus } } },
+      async () => ({ openai: true, anthropic: false, openrouter: false, github: true, OPENAI_API_KEY: 'sk-x' }),
+    );
+    const res = await app.inject({ method: 'GET', url: '/__extra' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ openai: true, anthropic: false, openrouter: false, github: true });
     await app.close();
   });
 });
