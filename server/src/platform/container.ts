@@ -26,9 +26,14 @@ import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import type { AgentsPort } from '../modules/agents/ports.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
-import type { ReviewsUnitOfWork } from '../modules/reviews/ports.js';
+import type {
+  PullLookupPort,
+  ReviewsPort,
+  ReviewsUnitOfWork,
+  RunsPort,
+} from '../modules/reviews/ports.js';
 import { DrizzleUnitOfWork } from '../db/unit-of-work.js';
-import type { PullsPort } from '../modules/pulls/ports.js';
+import type { PullsPort, ReviewSummaryPort, RunCostsPort } from '../modules/pulls/ports.js';
 import { DrizzlePullsRepository } from '../modules/pulls/repository.js';
 import type { ConnectionTester, SettingsPort } from '../modules/settings/ports.js';
 import { DrizzleSettingsRepository } from '../modules/settings/repository.js';
@@ -47,6 +52,12 @@ import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.j
  * Tests construct a container with `overrides` to inject mock adapters; the
  * Services depend on these interfaces, not the concrete classes.
  */
+/**
+ * Everything the reviews repository serves: the reviews module's own ports plus
+ * the read side the PR list (pulls module) needs.
+ */
+export type ReviewStore = ReviewsPort & RunsPort & PullLookupPort & ReviewSummaryPort & RunCostsPort;
+
 export interface ContainerOverrides {
   secrets?: SecretsProvider;
   auth?: AuthProvider;
@@ -81,7 +92,7 @@ export class Container {
   // runs). Constructed here, in the composition root, so consuming modules use
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsPort;
-  private _reviewRepo?: ReviewRepository;
+  private _reviewRepo?: ReviewStore;
   private _reviewsUow?: ReviewsUnitOfWork;
   private _pullsRepo?: PullsPort;
   private _settingsRepo?: SettingsPort;
@@ -113,7 +124,7 @@ export class Container {
     return (this._agentsRepo ??= new AgentsRepository(this.db));
   }
 
-  get reviewRepo(): ReviewRepository {
+  get reviewRepo(): ReviewStore {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
   }
 

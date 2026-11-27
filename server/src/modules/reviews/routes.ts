@@ -5,7 +5,34 @@ import type { RunEvent } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
+import type { Container } from '../../platform/container.js';
 import { ReviewService } from './service.js';
+import { ReviewRunExecutor } from './run-executor.js';
+import { DiffLoader } from './diff-loader.js';
+
+/**
+ * Wire a ReviewService from the container's ports (also used by `app.ts` for
+ * the boot-time reaper). Adapters stay lazy: git and the repo-intel facade are
+ * resolved on first use, as before.
+ */
+export function createReviewService(container: Container): ReviewService {
+  const executor = new ReviewRunExecutor({
+    runs: container.reviewRepo,
+    uow: container.reviewsUow,
+    diffs: new DiffLoader({ git: () => container.git, pulls: container.reviewRepo }),
+    llm: (id) => container.llm(id),
+    repoIntel: () => container.repoIntel,
+    runBus: container.runBus,
+  });
+  return new ReviewService({
+    reviews: container.reviewRepo,
+    runs: container.reviewRepo,
+    pulls: container.reviewRepo,
+    agents: container.agentsRepo,
+    runBus: container.runBus,
+    executor,
+  });
+}
 
 /**
  * reviews module.
@@ -19,7 +46,7 @@ const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
 export default async function reviewsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
-  const service = new ReviewService(container);
+  const service = createReviewService(container);
 
   // ---- Run a review (manual trigger) -------------------------------
   // Tight per-route limit: each call can fan out to expensive LLM runs.

@@ -10,7 +10,7 @@ description: >
   platform/; and when reviewing or refactoring backend layering. Use it even when the
   request never says "architecture": every backend feature lands in these rings.
 metadata:
-  version: "1.2.3"
+  version: "1.2.4"
   updated: "2026-11-27"
   sources: references.md
 ---
@@ -63,9 +63,10 @@ in the right ring.
    5. Route.
    6. Wiring in `container.ts`, plus a mock in `src/adapters/mocks.ts`.
 3. **Model on the target shape, not on neighbours.** Many existing files are recorded
-   debt in `assets/known-violations.json`, e.g. `reviews/run-executor.ts` importing
-   Drizzle row types, and services taking the whole `Container`. Copy the shapes in
-   [examples.md](examples.md) instead.
+   debt in `assets/known-violations.json`, e.g. `repo-intel/service.ts` and its
+   pipelines taking the whole `Container` and importing the repository and adapters.
+   Copy the shapes in [examples.md](examples.md) instead (`reviews/`, `pulls/`,
+   `agents/` are on the target shape).
 4. **Run the layer check** (below) and fix what it reports.
 5. **Test by ring.** Use cases get in-memory fakes of their ports. Repositories get
    `*.it.test.ts` with testcontainers. Routes get `app.inject()`. See

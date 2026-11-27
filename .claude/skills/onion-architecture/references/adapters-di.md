@@ -5,7 +5,7 @@
 | Port for… | File | Examples |
 |---|---|---|
 | An external system | `server/src/vendor/shared/adapters.ts` | `LLMProvider`, `GitHubClient`, `GitClient`, `CodeIndex`, `Embedder`, `SecretsProvider`, `AuthProvider`, `JobQueue` |
-| A module's own persistence or a module-specific capability | `server/src/modules/<m>/ports.ts` | `PullsPort`, `SettingsPort`, `ConnectionTester`, `AgentsPort`, `ReposPort`, `ReviewsUnitOfWork`. To move here: `Tokenizer`, `DepGraph` |
+| A module's own persistence or a module-specific capability | `server/src/modules/<m>/ports.ts` | `PullsPort`, `SettingsPort`, `ConnectionTester`, `AgentsPort`, `ReposPort`, `ReviewsPort`, `RunsPort`, `PullLookupPort`, `DiffSource`, `ReviewsUnitOfWork`. To move here: `Tokenizer`, `DepGraph` |
 
 A port declared inside `src/adapters/**` (today `Tokenizer` and `DepGraph`) points the
 wrong way: the core has to import the adapter folder to see its own dependency. When
@@ -29,9 +29,10 @@ Each adapter lives in `src/adapters/<name>/` and:
 - has a mock in `src/adapters/mocks.ts` (`MockGitHubClient`, `MockLLMProvider`, …)
   that tests use through `ContainerOverrides`.
 
-Pure helpers that happen to sit in `src/adapters/` today (`git/diff-parser.ts`,
-`codeindex/extract.ts`) have no I/O, so they belong in the core. Move such a helper
-next to its use case (or into `domain.ts`) when you next touch it. Anything that wraps
+Pure helpers that happen to sit in `src/adapters/` today (`codeindex/extract.ts`)
+have no I/O, so they belong in the core. Move such a helper next to its use case (or
+into `domain.ts`) when you next touch it, as `parseUnifiedDiff` moved to
+`modules/reviews/diff.ts` (the git adapter imports it from there: inward). Anything that wraps
 a native binary or library with side effects (`@ast-grep/napi`, ripgrep, simple-git,
 js-tiktoken) stays an adapter behind a port.
 
@@ -48,8 +49,9 @@ js-tiktoken) stays an adapter behind a port.
 A **new** getter returns the port type, not the class:
 `get pullsRepo(): PullsPort { return (this._pullsRepo ??= new DrizzlePullsRepository(this.db)); }`.
 A getter typed as the concrete class lets every caller reach Drizzle-specific methods,
-and the port stops being the boundary. `reviewRepo` still returns its class (debt
-until the reviews ports land); every other repository getter is port-typed. Add an `overrides` slot when a route test needs
+and the port stops being the boundary. Every repository getter is port-typed;
+`reviewRepo` is an intersection (`ReviewStore`: the reviews ports plus the pulls
+module's `ReviewSummaryPort` / `RunCostsPort`), because one repository serves both. Add an `overrides` slot when a route test needs
 to swap the implementation. Use-case tests don't need one: they build the service
 with fakes directly.
 
@@ -74,8 +76,10 @@ export class ReviewService {
 }
 ```
 
-Services in `reviews` and `repo-intel` still take `private container: Container`
-(recorded debt); the others take a deps object. A service
+Services in `repo-intel` still take `private container: Container`
+(recorded debt); the others take a deps object (see `reviews/ports.ts`
+`ReviewServiceDeps` / `ReviewRunExecutorDeps`, wired in `reviews/routes.ts`
+`createReviewService`). A service
 written that way hides its dependencies, cannot be tested without building a whole
 container, and can reach anything. New services take a deps object. When you
 substantially edit an old one, convert it and regenerate the baseline.

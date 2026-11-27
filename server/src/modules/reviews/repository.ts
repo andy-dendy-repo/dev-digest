@@ -1,7 +1,26 @@
 import type { DbOrTx } from '../../db/client.js';
-import * as t from '../../db/schema.js';
-import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
-import type { NewReview, ReviewWritePort, RunCompletion } from './ports.js';
+import type { Finding, FindingRecord, Intent, ReviewRecord, RunSummary, RunTrace } from '@devdigest/shared';
+import type { FindingRow } from '../../db/rows.js';
+import type { ActiveRun, NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
+import type {
+  NewReview,
+  Persisted,
+  PullLookupPort,
+  ReviewWritePort,
+  ReviewsPort,
+  RunCompletion,
+  RunsPort,
+} from './ports.js';
+import * as reviewRepo from './repository/review.repo.js';
+import * as runRepo from './repository/run.repo.js';
+import * as pullRepo from './repository/pull.repo.js';
+import {
+  toFindingRecord,
+  toPrFilePatch,
+  toReviewPull,
+  toReviewRecord,
+  toReviewRepoRef,
+} from './repository/mappers.js';
 
 /**
  * A2 — review data-access. The ONLY layer touching the DB for the review
@@ -10,48 +29,47 @@ import type { NewReview, ReviewWritePort, RunCompletion } from './ports.js';
  * Workspace scoping is enforced via the PR (which carries workspace_id).
  *
  * The query implementations are colocated, split by aggregate, under
- * `./repository/` (review+findings, agent runs, pull/intent). This class
- * composes them so its public API stays identical.
+ * `./repository/` (review+findings, agent runs, pull/intent); rows are mapped
+ * to domain types (`./repository/mappers.ts`) here, so the ports never leak
+ * a Drizzle row.
  */
-
-import type { FindingRow, PullRow } from '../../db/rows.js';
-export type { FindingRow, PullRow };
-
-export type ReviewRow = typeof t.reviews.$inferSelect;
-
-import * as reviewRepo from './repository/review.repo.js';
-import * as runRepo from './repository/run.repo.js';
-import * as pullRepo from './repository/pull.repo.js';
-
-export class ReviewRepository implements ReviewWritePort {
+export class ReviewRepository implements ReviewWritePort, ReviewsPort, RunsPort, PullLookupPort {
   /** `db` is the shared client or a unit-of-work transaction (see db/unit-of-work.ts). */
   constructor(private db: DbOrTx) {}
 
   // ---- PR lookup (workspace-scoped) --------------------------------------
 
-  getPull(workspaceId: string, prId: string): Promise<PullRow | undefined> {
-    return pullRepo.getPull(this.db, workspaceId, prId);
+  async getPull(workspaceId: string, prId: string): Promise<ReviewPull | undefined> {
+    const row = await pullRepo.getPull(this.db, workspaceId, prId);
+    return row ? toReviewPull(row) : undefined;
   }
 
-  getRepo(repoId: string): Promise<typeof t.repos.$inferSelect | undefined> {
-    return pullRepo.getRepo(this.db, repoId);
+  async getRepo(repoId: string): Promise<ReviewRepoRef | undefined> {
+    const row = await pullRepo.getRepo(this.db, repoId);
+    return row ? toReviewRepoRef(row) : undefined;
   }
 
-  getPrFiles(prId: string): Promise<(typeof t.prFiles.$inferSelect)[]> {
-    return pullRepo.getPrFiles(this.db, prId);
+  async getPrFiles(prId: string): Promise<PrFilePatch[]> {
+    return (await pullRepo.getPrFiles(this.db, prId)).map(toPrFilePatch);
   }
 
   // ---- reviews + findings -------------------------------------------------
 
-  insertReview(values: NewReview): Promise<ReviewRow> {
-    return reviewRepo.insertReview(this.db, values);
+  async insertReview(values: NewReview): Promise<Persisted> {
+    const row = await reviewRepo.insertReview(this.db, values);
+    return { id: row.id };
   }
 
-  insertFindings(reviewId: string, findings: Finding[]): Promise<FindingRow[]> {
-    return reviewRepo.insertFindings(this.db, reviewId, findings);
+  async insertFindings(reviewId: string, findings: Finding[]): Promise<Persisted[]> {
+    const rows = await reviewRepo.insertFindings(this.db, reviewId, findings);
+    return rows.map((r) => ({ id: r.id }));
   }
 
-  /** Latest `kind='review'` review per PR with its findings (PR list; `ReviewSummaryPort`). */
+  /**
+   * Latest `kind='review'` review per PR with its findings (PR list;
+   * `ReviewSummaryPort` of the pulls module — rows structurally match its
+   * camelCase `FindingSummary`).
+   */
   latestReviews(prIds: string[]): Promise<Map<string, { score: number | null; findings: FindingRow[] }>> {
     return reviewRepo.latestReviews(this.db, prIds);
   }
@@ -61,21 +79,15 @@ export class ReviewRepository implements ReviewWritePort {
     return runRepo.costByPull(this.db, prIds);
   }
 
-  /** Reviews for a PR (newest first), each with its findings. */
-  reviewsForPull(prId: string): Promise<{ review: ReviewRow; findings: FindingRow[] }[]> {
-    return reviewRepo.reviewsForPull(this.db, prId);
-  }
-
-  getReview(reviewId: string): Promise<ReviewRow | undefined> {
-    return reviewRepo.getReview(this.db, reviewId);
+  /** Reviews for a PR (newest first), each with its findings; `agent_name` null. */
+  async reviewsForPull(prId: string): Promise<ReviewRecord[]> {
+    const rows = await reviewRepo.reviewsForPull(this.db, prId);
+    return rows.map(({ review, findings }) => toReviewRecord(review, findings));
   }
 
   /** In-flight runs for a PR (status='running') — the server-side source of
    *  truth for "which agents are running now". Joined with the agent name. */
-  activeRunsForPull(
-    workspaceId: string,
-    prId: string,
-  ): Promise<{ run_id: string; agent_id: string | null; agent_name: string | null; ran_at: string | null }[]> {
+  activeRunsForPull(workspaceId: string, prId: string): Promise<ActiveRun[]> {
     return runRepo.activeRunsForPull(this.db, workspaceId, prId);
   }
 
@@ -108,23 +120,20 @@ export class ReviewRepository implements ReviewWritePort {
 
   // ---- finding actions ----------------------------------------------------
 
-  getFinding(findingId: string): Promise<FindingRow | undefined> {
-    return reviewRepo.getFinding(this.db, findingId);
+  /** Workspace owning a finding (via review → PR); undefined when any link is missing. */
+  async findingWorkspace(findingId: string): Promise<string | undefined> {
+    const ctx = await reviewRepo.findingContext(this.db, findingId);
+    return ctx?.pull.workspaceId;
   }
 
-  /** Resolve workspace_id + pr_id for a finding (via review → pr). */
-  findingContext(
-    findingId: string,
-  ): Promise<{ finding: FindingRow; review: ReviewRow; pull: PullRow } | undefined> {
-    return reviewRepo.findingContext(this.db, findingId);
+  async setFindingAccepted(findingId: string, at: Date | null): Promise<FindingRecord | undefined> {
+    const row = await reviewRepo.setFindingAccepted(this.db, findingId, at);
+    return row ? toFindingRecord(row) : undefined;
   }
 
-  setFindingAccepted(findingId: string, at: Date | null): Promise<FindingRow | undefined> {
-    return reviewRepo.setFindingAccepted(this.db, findingId, at);
-  }
-
-  setFindingDismissed(findingId: string, at: Date | null): Promise<FindingRow | undefined> {
-    return reviewRepo.setFindingDismissed(this.db, findingId, at);
+  async setFindingDismissed(findingId: string, at: Date | null): Promise<FindingRecord | undefined> {
+    const row = await reviewRepo.setFindingDismissed(this.db, findingId, at);
+    return row ? toFindingRecord(row) : undefined;
   }
 
   // ---- intent -------------------------------------------------------------
@@ -140,13 +149,7 @@ export class ReviewRepository implements ReviewWritePort {
   // ---- observability: agent_runs + run_traces ----------------------------
 
   /** Create an agent_runs row in `running` state; returns its id (= the runId). */
-  createAgentRun(values: {
-    workspaceId: string;
-    agentId: string | null;
-    prId: string;
-    provider: string | null;
-    model: string | null;
-  }): Promise<string> {
+  createAgentRun(values: NewAgentRun): Promise<string> {
     return runRepo.createAgentRun(this.db, values);
   }
 

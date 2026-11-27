@@ -39,3 +39,17 @@ export class ConfigError extends AppError {
     super('config_error', message, 500, details);
   }
 }
+
+/**
+ * A database write failed. Thrown by the unit of work in place of the driver
+ * error, whose message (drizzle: `Failed query: <sql>\nparams: <all params>`)
+ * can carry whole payloads. The message is short and safe to persist or show;
+ * the original error stays on `cause` for the server log.
+ */
+export class PersistenceError extends AppError {
+  constructor(message = 'Database write failed (details in the server log)', cause?: unknown) {
+    super('persistence_error', message, 500);
+    this.name = 'PersistenceError';
+    if (cause !== undefined) (this as { cause?: unknown }).cause = cause;
+  }
+}

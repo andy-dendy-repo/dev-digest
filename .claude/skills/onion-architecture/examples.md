@@ -96,7 +96,8 @@ The constructor now lists every dependency, and a test passes two small fakes.
 
 ## 3. Port leaks Drizzle row types (`core-no-infra` on `db/rows.ts`)
 
-**Before**
+**Before** (fixed in the B4 refactor: `reviews/ports.ts` returns `ReviewRecord`,
+`FindingRecord`, `ReviewPull`; the mapping is in `reviews/repository/mappers.ts`)
 
 ```ts
 // reviews/service.ts
@@ -117,7 +118,8 @@ type.
 
 ## 4. Use case imports a pure helper from `adapters/` (`core-no-infra`)
 
-**Before:** `reviews/diff-loader.ts` → `../../adapters/git/diff-parser.js`
+**Before:** `reviews/diff-loader.ts` → `../../adapters/git/diff-parser.js` (fixed in
+the B4 refactor: the parser is now `reviews/diff.ts`)
 
 `parseUnifiedDiff` is a pure string → structure function with no I/O. It sits in
 `adapters/` only by history.
