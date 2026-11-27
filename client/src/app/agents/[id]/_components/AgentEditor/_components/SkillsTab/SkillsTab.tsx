@@ -1,6 +1,6 @@
 /* SkillsTab — attach workspace skills to this agent, enable/disable them for it
    and set their order (= order of the blocks in the prompt). Every change is
-   saved at once (optimistically) through PUT /agents/:id/skills. */
+   applied at once and saved through PUT /agents/:id/skills (in click order). */
 "use client";
 
 import React from "react";
@@ -30,7 +30,7 @@ export function SkillsTab({ agent }: { agent: Agent }) {
   }
 
   const rows = buildRows(links.data ?? [], skills.data ?? []);
-  const save = (next: SkillRow[]) => setSkills.mutate(toLinks(next, agent.id));
+  const save = (next: SkillRow[]) => setSkills.save(toLinks(next, agent.id));
   const filtering = filter.trim().length > 0;
   // Reordering a filtered subset would be ambiguous, so drag/keys work on the full list only.
   const canMove = !filtering;

@@ -123,16 +123,18 @@ export function useAgentSkills(agentId: string) {
 }
 
 /**
- * Replace the agent's ordered skill list with `next` (its linked skills, in
- * prompt order). Optimistic: the tab reorders/toggles at once and rolls back if
- * the server refuses.
+ * Replace the agent's ordered skill list. `save(next)` applies `next` to the
+ * cache at once (so the next click is computed from it), then queues the PUT:
+ * saves for one agent run in click order (`scope`), and only the last queued
+ * save settles the cache from the server, so an earlier response never
+ * overwrites a later click. A failed save refetches the server's state.
  */
 export function useSetAgentSkills(agentId: string) {
   const qc = useQueryClient();
   const key = agentKeys.skills(agentId);
-  return useMutation({
-    // Saves for one agent run one after another, so an earlier response can't
-    // overwrite the optimistic state of a later click.
+  const mutationKey = [...key, "save"] as const;
+  const mutation = useMutation({
+    mutationKey,
     scope: { id: `agent-skills-${agentId}` },
     mutationFn: (next: AgentSkillView[]) => {
       const body: SetAgentSkillsRequest = {
@@ -140,20 +142,19 @@ export function useSetAgentSkills(agentId: string) {
       };
       return api.put<AgentSkillView[]>(`/agents/${agentId}/skills`, body);
     },
-    onMutate: async (next) => {
-      await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<AgentSkillView[]>(key);
-      qc.setQueryData(key, next);
-      return { previous };
-    },
-    onError: (_e, _next, ctx) => {
-      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
-    },
-    onSuccess: (data) => {
-      qc.setQueryData(key, data);
+    onSettled: () => {
+      // This save still counts as pending here: more than one → a later click is queued.
+      if (qc.isMutating({ mutationKey }) > 1) return;
+      qc.invalidateQueries({ queryKey: key });
       // skill_count on the cards + the new agent version.
       qc.invalidateQueries({ queryKey: agentKeys.list() });
       qc.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
     },
   });
+  const save = (next: AgentSkillView[]) => {
+    void qc.cancelQueries({ queryKey: key });
+    qc.setQueryData(key, next);
+    mutation.mutate(next);
+  };
+  return { ...mutation, save };
 }
