@@ -5,15 +5,18 @@
    (hooks/reviews.ts) — the drawer combines both. */
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { runKeys } from "@/lib/hooks/reviews";
 import type { RunTrace } from "@devdigest/shared";
 
-export function useRunTrace(runId: string | null | undefined, enabled = true) {
-  return useQuery({
-    queryKey: ["run-trace", runId],
+export const runTraceOptions = (runId: string) =>
+  queryOptions({
+    queryKey: runKeys.trace(runId),
     queryFn: () => api.get<RunTrace>(`/runs/${runId}/trace`),
-    enabled: !!runId && enabled,
     retry: false,
   });
+
+export function useRunTrace(runId: string | null | undefined, enabled = true) {
+  return useQuery({ ...runTraceOptions(runId ?? ""), enabled: !!runId && enabled });
 }
