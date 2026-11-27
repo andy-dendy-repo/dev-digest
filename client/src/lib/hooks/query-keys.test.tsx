@@ -6,13 +6,14 @@ import { useDeleteRun, reviewKeys, runKeys } from "./reviews";
 import { useRefreshRepo, repoKeys } from "./repos";
 import { pullKeys } from "./pulls";
 import { useTestConnection, settingsKeys } from "./settings";
-import { providerModelKeys } from "./agents";
+import { agentKeys, providerModelKeys } from "./agents";
+import { skillKeys, useUpdateSkill } from "./skills";
 
 vi.mock("@/lib/api", () => ({
   API_BASE: "http://api.test",
   api: {
     get: vi.fn(),
-    put: vi.fn(),
+    put: vi.fn(async () => ({ id: "s1", name: "x" })),
     patch: vi.fn(),
     post: vi.fn(async () => ({ ok: true })),
     del: vi.fn(async () => ({ ok: true })),
@@ -80,5 +81,22 @@ describe("mutations invalidate through the key factories", () => {
     expect(isInvalidated(providerModelKeys.byProvider("openai"))).toBe(true);
     expect(isInvalidated(providerModelKeys.byProvider("anthropic"))).toBe(true);
     expect(isInvalidated(settingsKeys.detail())).toBe(false);
+  });
+
+  it("editing a skill refreshes the skill list and every agent query, not other skills' details", async () => {
+    const { wrapper, isInvalidated } = setup([
+      skillKeys.list(),
+      skillKeys.detail("s2"),
+      agentKeys.list(),
+      agentKeys.detail("a1"),
+    ]);
+    const { result } = renderHook(() => useUpdateSkill(), { wrapper });
+
+    result.current.mutate({ id: "s1", patch: { enabled: false } });
+
+    await waitFor(() => expect(isInvalidated(skillKeys.list())).toBe(true));
+    expect(isInvalidated(agentKeys.list())).toBe(true);
+    expect(isInvalidated(agentKeys.detail("a1"))).toBe(true);
+    expect(isInvalidated(skillKeys.detail("s2"))).toBe(false);
   });
 });
