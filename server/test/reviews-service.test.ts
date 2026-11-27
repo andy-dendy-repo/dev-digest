@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ActiveRun, Agent, Finding, FindingRecord, LLMProvider, ReviewRecord, RunTrace } from '@devdigest/shared';
-import type { Review } from '@devdigest/shared';
+import type { Review, Skill } from '@devdigest/shared';
 import { MockGitClient, MockLLMProvider } from '../src/adapters/mocks.js';
 import { RunBus } from '../src/platform/sse.js';
 import { NotFoundError, PersistenceError } from '../src/platform/errors.js';
@@ -207,7 +207,11 @@ function recordingLogger() {
   return { logger, errors };
 }
 
-function makeExecutor(opts: { llm?: LLMProvider; git?: MockGitClient } = {}) {
+function skillFixture(name: string, version = 1): Skill {
+  return { id: `skill-${name}`, name, description: `Flag ${name}.`, type: 'rubric', source: 'manual', body: `${name} body`, enabled: true, version };
+}
+
+function makeExecutor(opts: { llm?: LLMProvider; git?: MockGitClient; skills?: Skill[] } = {}) {
   const runs = new FakeRuns();
   const uow = new FakeUow();
   const pulls = new FakePulls();
@@ -221,6 +225,8 @@ function makeExecutor(opts: { llm?: LLMProvider; git?: MockGitClient } = {}) {
     llm: async () => llm,
     repoIntel: () => noRepoIntel,
     runBus,
+    skills: { effectiveForAgent: async (agentId) => (agentId === 'agent-1' ? (opts.skills ?? []) : []) },
+    countTokens: (text) => text.length,
   });
   return { executor, runs, uow, pulls, runBus, llm };
 }
@@ -258,6 +264,47 @@ describe('ReviewRunExecutor (port fakes)', () => {
     const user = req.messages.map((m) => m.content).join('\n');
     expect(user).toMatch(/<untrusted source="pr-title">\ntitle: Add config/);
     expect(user).toContain('Review pull request #7.');
+  });
+
+  it('skills: effective skills go into the prompt in order, the log names them, the trace counts their tokens', async () => {
+    const skills = [skillFixture('test-mock-discipline', 2), skillFixture('test-corner-cases')];
+    const { executor, uow, llm } = makeExecutor({ skills });
+
+    await executor.executeRuns(WS, PULL, REPO, [{ agent: agent(), runId: 'run-1' }]);
+
+    const req = (llm as MockLLMProvider).calls.find((c) => c.method === 'completeStructured')!.req as {
+      messages: { role: string; content: string }[];
+    };
+    const user = req.messages[1]!.content;
+    expect(user).toContain('## Skills / rules\n### test-mock-discipline\n> Flag test-mock-discipline.');
+    expect(user.indexOf('test-mock-discipline')).toBeLessThan(user.indexOf('### test-corner-cases'));
+
+    const trace = uow.traces.get('run-1')!;
+    const block1 = '### test-mock-discipline\n> Flag test-mock-discipline.\n\ntest-mock-discipline body';
+    expect(trace.prompt_assembly.skills_detail).toEqual([
+      { id: 'skill-test-mock-discipline', name: 'test-mock-discipline', version: 2, tokens: block1.length },
+      expect.objectContaining({ name: 'test-corner-cases', version: 1 }),
+    ]);
+    expect(trace.prompt_assembly.section_tokens).toMatchObject({
+      skills: trace.prompt_assembly.skills!.length,
+      system: expect.any(Number),
+      user: expect.any(Number),
+    });
+    expect(trace.log.some((l) => l.msg.startsWith('Skills: 2 enabled — test-mock-discipline v2 ('))).toBe(true);
+  });
+
+  it('no enabled skills: no Skills section, no breakdown, a "none" log line', async () => {
+    const { executor, uow, llm } = makeExecutor();
+    await executor.executeRuns(WS, PULL, REPO, [{ agent: agent(), runId: 'run-1' }]);
+    const req = (llm as MockLLMProvider).calls.find((c) => c.method === 'completeStructured')!.req as {
+      messages: { content: string }[];
+    };
+    expect(req.messages[1]!.content).not.toContain('## Skills / rules');
+    const trace = uow.traces.get('run-1')!;
+    expect(trace.prompt_assembly.skills).toBeNull();
+    expect(trace.prompt_assembly.skills_detail).toBeUndefined();
+    expect(trace.prompt_assembly.section_tokens).not.toHaveProperty('skills');
+    expect(trace.log.some((l) => l.msg === 'Skills: none enabled for this agent')).toBe(true);
   });
 
   it('LLM failure: the run is failed with the error, the trace is saved, nothing is persisted', async () => {

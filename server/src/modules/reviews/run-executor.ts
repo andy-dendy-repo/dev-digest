@@ -1,5 +1,5 @@
-import type { Agent, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
-import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import type { Agent, PromptAssembly, Provider, Review, RunTrace, Skill, UnifiedDiff } from '@devdigest/shared';
+import { reviewPullRequest, countBlockers, formatSkillBlock } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import { PersistenceError } from '../../platform/errors.js';
 import type { ReviewPull, ReviewRepoRef } from './domain.js';
@@ -175,6 +175,11 @@ export class ReviewRunExecutor implements RunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // M2 — the agent's effective skills (linked + enabled for the agent AND
+      // globally), in the agent's order. A disabled skill never reaches here,
+      // so it is absent from the prompt, the trace and this log.
+      const skills = await this.loadSkills(agent, runLog);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -195,6 +200,7 @@ export class ReviewRunExecutor implements RunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        ...(skills.blocks.length > 0 ? { skills: skills.blocks } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -270,7 +276,7 @@ export class ReviewRunExecutor implements RunExecutor {
             findings: findingRows.length,
             grounding,
           },
-          prompt_assembly: outcome.assembly,
+          prompt_assembly: this.withTokens(outcome.assembly, skills.detail),
           tool_calls: outcome.chunks.map((c) => ({
             tool: 'review_file',
             args: c.label,
@@ -417,6 +423,48 @@ export class ReviewRunExecutor implements RunExecutor {
    * failure/cancel (and pre-work failures) so the events (and WHY it failed)
    * survive a reload, not just the in-memory stream.
    */
+  /** Load + render the agent's effective skills and log them as one line. */
+  private async loadSkills(
+    agent: Agent,
+    runLog: RunLogger,
+  ): Promise<{ blocks: string[]; detail: NonNullable<PromptAssembly['skills_detail']> }> {
+    const list: Skill[] = await this.deps.skills.effectiveForAgent(agent.id);
+    const blocks = list.map((s) => formatSkillBlock(s));
+    const detail = list.map((s, i) => ({
+      id: s.id,
+      name: s.name,
+      version: s.version,
+      tokens: this.deps.countTokens(blocks[i]!),
+    }));
+    runLog.info(
+      detail.length === 0
+        ? 'Skills: none enabled for this agent'
+        : `Skills: ${detail.length} enabled — ${detail
+            .map((d) => `${d.name} v${d.version} (${d.tokens} tok)`)
+            .join(', ')}`,
+      detail.length > 0 ? { skills: detail } : undefined,
+    );
+    return { blocks, detail };
+  }
+
+  /** Add per-slot token counts and the per-skill breakdown to the assembly. */
+  private withTokens(
+    assembly: PromptAssembly,
+    skillsDetail: NonNullable<PromptAssembly['skills_detail']>,
+  ): PromptAssembly {
+    const slots = ['system', 'skills', 'memory', 'specs', 'callers', 'repo_map', 'pr_description', 'user'] as const;
+    const sectionTokens: Record<string, number> = {};
+    for (const slot of slots) {
+      const text = assembly[slot];
+      if (typeof text === 'string' && text.length > 0) sectionTokens[slot] = this.deps.countTokens(text);
+    }
+    return {
+      ...assembly,
+      section_tokens: sectionTokens,
+      ...(skillsDetail.length > 0 ? { skills_detail: skillsDetail } : {}),
+    };
+  }
+
   private traceFromBuffer(
     runId: string,
     pull: ReviewPull,

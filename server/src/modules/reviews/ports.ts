@@ -13,6 +13,7 @@ import type {
 } from '@devdigest/shared';
 import type { RunBus } from '../../platform/sse.js';
 import type { AgentsPort } from '../agents/ports.js';
+import type { SkillsPort } from '../skills/ports.js';
 import type { RepoIntel } from '../repo-intel/types.js';
 import type { NewAgentRun, PrFilePatch, ReviewPull, ReviewRepoRef } from './domain.js';
 
@@ -119,6 +120,9 @@ export interface RunsPort {
   reapStaleRunningRuns(): Promise<number>;
 }
 
+/** The skills a run injects: linked, enabled for the agent and globally, in order. */
+export type SkillsReadPort = Pick<SkillsPort, 'effectiveForAgent'>;
+
 /** The agent reads a review needs. */
 export type AgentsReadPort = Pick<AgentsPort, 'listEnabled' | 'getById'>;
 
@@ -171,6 +175,9 @@ export interface ReviewRunExecutorDeps {
   /** Lazy: the facade is built on first use. */
   repoIntel: () => RepoIntelReadPort;
   runBus: RunBus;
+  skills: SkillsReadPort;
+  /** Token counter (cl100k) for the trace's per-section / per-skill tokens. */
+  countTokens: (text: string) => number;
 }
 
 export interface ReviewServiceDeps {
