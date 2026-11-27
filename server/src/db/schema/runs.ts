@@ -1,37 +1,50 @@
-import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision, index } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { agents } from './agents';
 import { pullRequests } from './pulls';
 
 // ============================================================ Observability
 
-export const agentRuns = pgTable('agent_runs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  workspaceId: uuid('workspace_id')
-    .notNull()
-    .references(() => workspaces.id, { onDelete: 'cascade' }),
-  agentId: uuid('agent_id').references(() => agents.id, { onDelete: 'set null' }),
-  prId: uuid('pr_id').references(() => pullRequests.id, { onDelete: 'set null' }),
-  ranAt: timestamp('ran_at', { withTimezone: true }).defaultNow().notNull(),
-  provider: text('provider'),
-  model: text('model'),
-  durationMs: integer('duration_ms'),
-  tokensIn: integer('tokens_in'),
-  tokensOut: integer('tokens_out'),
-  /** USD cost of the run (OpenRouter-reported or price-book estimate); null = unknown /
-   *  not completed. doublePrecision, not numeric: drizzle returns numeric as a string. */
-  costUsd: doublePrecision('cost_usd'),
-  status: text('status'),
-  /** Failure reason when status='failed' (LLM/API error, timeout, quota, …). */
-  error: text('error'),
-  source: text('source', { enum: ['local', 'ci'] }).notNull().default('local'),
-  findingsCount: integer('findings_count'),
-  grounding: text('grounding'),
-  /** Review score (0-100) for this run; null on failed/cancelled runs. */
-  score: integer('score'),
-  /** Findings that tripped the agent's gate (severity ≥ ciFailOn). */
-  blockers: integer('blockers'),
-});
+export const agentRuns = pgTable(
+  'agent_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    agentId: uuid('agent_id').references(() => agents.id, { onDelete: 'set null' }),
+    prId: uuid('pr_id').references(() => pullRequests.id, { onDelete: 'set null' }),
+    ranAt: timestamp('ran_at', { withTimezone: true }).defaultNow().notNull(),
+    provider: text('provider'),
+    model: text('model'),
+    durationMs: integer('duration_ms'),
+    tokensIn: integer('tokens_in'),
+    tokensOut: integer('tokens_out'),
+    /** USD cost of the run (OpenRouter-reported or price-book estimate); null = unknown /
+     *  not completed. doublePrecision, not numeric: drizzle returns numeric as a string. */
+    costUsd: doublePrecision('cost_usd'),
+    status: text('status'),
+    /** Failure reason when status='failed' (LLM/API error, timeout, quota, …). */
+    error: text('error'),
+    source: text('source', { enum: ['local', 'ci'] }).notNull().default('local'),
+    findingsCount: integer('findings_count'),
+    grounding: text('grounding'),
+    /** Review score (0-100) for this run; null on failed/cancelled runs. */
+    score: integer('score'),
+    /** Findings that tripped the agent's gate (severity ≥ ciFailOn). */
+    blockers: integer('blockers'),
+  },
+  (t) => ({
+    // PR run history / active runs / cost per PR all filter on pr_id.
+    prIdx: index('agent_runs_pr_idx').on(t.prId),
+    // FK lookup for ON DELETE SET NULL when an agent is deleted.
+    agentIdx: index('agent_runs_agent_idx').on(t.agentId),
+    // Boot reaper + "in flight" checks look for status='running' only; a partial
+    // index stays tiny (finished runs are the overwhelming majority).
+    runningIdx: index('agent_runs_running_idx').on(t.status).where(sql`${t.status} = 'running'`),
+  }),
+);
 
 /** Whole trace of one run as a SINGLE jsonb document. */
 export const runTraces = pgTable('run_traces', {

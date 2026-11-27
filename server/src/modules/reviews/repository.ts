@@ -1,6 +1,7 @@
-import type { Db } from '../../db/client.js';
+import type { DbOrTx } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
+import type { NewReview, ReviewWritePort, RunCompletion } from './ports.js';
 
 /**
  * A2 — review data-access. The ONLY layer touching the DB for the review
@@ -22,8 +23,9 @@ import * as reviewRepo from './repository/review.repo.js';
 import * as runRepo from './repository/run.repo.js';
 import * as pullRepo from './repository/pull.repo.js';
 
-export class ReviewRepository {
-  constructor(private db: Db) {}
+export class ReviewRepository implements ReviewWritePort {
+  /** `db` is the shared client or a unit-of-work transaction (see db/unit-of-work.ts). */
+  constructor(private db: DbOrTx) {}
 
   // ---- PR lookup (workspace-scoped) --------------------------------------
 
@@ -41,17 +43,7 @@ export class ReviewRepository {
 
   // ---- reviews + findings -------------------------------------------------
 
-  insertReview(values: {
-    workspaceId: string;
-    prId: string;
-    agentId: string | null;
-    runId: string | null;
-    kind: 'summary' | 'review';
-    verdict: string | null;
-    summary: string | null;
-    score: number | null;
-    model: string | null;
-  }): Promise<ReviewRow> {
+  insertReview(values: NewReview): Promise<ReviewRow> {
     return reviewRepo.insertReview(this.db, values);
   }
 
@@ -148,25 +140,7 @@ export class ReviewRepository {
     return runRepo.createAgentRun(this.db, values);
   }
 
-  completeAgentRun(
-    runId: string,
-    values: {
-      status: 'done' | 'failed' | 'cancelled';
-      durationMs: number;
-      tokensIn: number;
-      tokensOut: number;
-      /** USD cost; null when unknown (failed/cancelled runs, unpriced model). */
-      costUsd?: number | null;
-      findingsCount: number;
-      grounding: string;
-      /** Review score (0-100); null on failed/cancelled runs. */
-      score?: number | null;
-      /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
-      blockers?: number | null;
-      /** Failure reason (status='failed') / cancellation note. Null clears it. */
-      error?: string | null;
-    },
-  ): Promise<void> {
+  completeAgentRun(runId: string, values: RunCompletion): Promise<void> {
     return runRepo.completeAgentRun(this.db, runId, values);
   }
 

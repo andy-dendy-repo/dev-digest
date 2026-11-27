@@ -200,41 +200,46 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       const gh = await container.github();
       const detail = await gh.getPullRequest({ owner: repo.owner, name: repo.name }, pr.number);
 
-      await container.db.delete(t.prFiles).where(eq(t.prFiles.prId, pr.id));
-      if (detail.files.length > 0) {
-        await container.db.insert(t.prFiles).values(
-          detail.files.map((f) => ({
-            prId: pr.id,
-            path: f.path,
-            additions: f.additions,
-            deletions: f.deletions,
-            patch: f.patch ?? null,
-          })),
-        );
-      }
-      await container.db.delete(t.prCommits).where(eq(t.prCommits.prId, pr.id));
-      if (detail.commits.length > 0) {
-        await container.db.insert(t.prCommits).values(
-          detail.commits.map((c) => ({
-            prId: pr.id,
-            sha: c.sha,
-            message: c.message,
-            author: c.author,
-            committedAt: c.committed_at ? new Date(c.committed_at) : null,
-          })),
-        );
-      }
-      await container.db
-        .update(t.pullRequests)
-        .set({
-          body: detail.body ?? null,
-          // Diff stats aren't on GitHub's PR-list payload — backfill them from
-          // the detail fetch so the Pull Requests list shows real size/files.
-          additions: detail.additions,
-          deletions: detail.deletions,
-          filesCount: detail.files_count,
-        })
-        .where(eq(t.pullRequests.id, pr.id));
+      // Replace files + commits and refresh the PR row in ONE transaction, so a
+      // failure part-way never leaves the PR with no files (the fallback below
+      // then serves the previous snapshot intact).
+      await container.db.transaction(async (tx) => {
+        await tx.delete(t.prFiles).where(eq(t.prFiles.prId, pr.id));
+        if (detail.files.length > 0) {
+          await tx.insert(t.prFiles).values(
+            detail.files.map((f) => ({
+              prId: pr.id,
+              path: f.path,
+              additions: f.additions,
+              deletions: f.deletions,
+              patch: f.patch ?? null,
+            })),
+          );
+        }
+        await tx.delete(t.prCommits).where(eq(t.prCommits.prId, pr.id));
+        if (detail.commits.length > 0) {
+          await tx.insert(t.prCommits).values(
+            detail.commits.map((c) => ({
+              prId: pr.id,
+              sha: c.sha,
+              message: c.message,
+              author: c.author,
+              committedAt: c.committed_at ? new Date(c.committed_at) : null,
+            })),
+          );
+        }
+        await tx
+          .update(t.pullRequests)
+          .set({
+            body: detail.body ?? null,
+            // Diff stats aren't on GitHub's PR-list payload — backfill them from
+            // the detail fetch so the Pull Requests list shows real size/files.
+            additions: detail.additions,
+            deletions: detail.deletions,
+            filesCount: detail.files_count,
+          })
+          .where(eq(t.pullRequests.id, pr.id));
+      });
 
       return { ...detail, id: pr.id };
     } catch (err) {

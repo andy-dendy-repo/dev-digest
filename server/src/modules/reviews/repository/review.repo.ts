@@ -1,7 +1,8 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import type { Db } from '../../../db/client.js';
+import type { DbOrTx } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { Finding } from '@devdigest/shared';
+import type { NewReview } from '../ports.js';
 import type { FindingRow, PullRow } from '../../../db/rows.js';
 
 export type ReviewRow = typeof t.reviews.$inferSelect;
@@ -9,25 +10,15 @@ export type ReviewRow = typeof t.reviews.$inferSelect;
 // ---- reviews + findings ---------------------------------------------------
 
 export async function insertReview(
-  db: Db,
-  values: {
-    workspaceId: string;
-    prId: string;
-    agentId: string | null;
-    runId: string | null;
-    kind: 'summary' | 'review';
-    verdict: string | null;
-    summary: string | null;
-    score: number | null;
-    model: string | null;
-  },
+  db: DbOrTx,
+  values: NewReview,
 ): Promise<ReviewRow> {
   const [row] = await db.insert(t.reviews).values(values).returning();
   return row!;
 }
 
 export async function insertFindings(
-  db: Db,
+  db: DbOrTx,
   reviewId: string,
   findings: Finding[],
 ): Promise<FindingRow[]> {
@@ -56,7 +47,7 @@ export async function insertFindings(
 
 /** Reviews for a PR (newest first), each with its findings. */
 export async function reviewsForPull(
-  db: Db,
+  db: DbOrTx,
   prId: string,
 ): Promise<{ review: ReviewRow; findings: FindingRow[] }[]> {
   const reviews = await db
@@ -73,7 +64,7 @@ export async function reviewsForPull(
   }));
 }
 
-export async function getReview(db: Db, reviewId: string): Promise<ReviewRow | undefined> {
+export async function getReview(db: DbOrTx, reviewId: string): Promise<ReviewRow | undefined> {
   const [row] = await db.select().from(t.reviews).where(eq(t.reviews.id, reviewId));
   return row;
 }
@@ -81,7 +72,7 @@ export async function getReview(db: Db, reviewId: string): Promise<ReviewRow | u
 /** Delete a whole review (one agent's run) + its findings (cascade), scoped
  *  to the workspace. Returns false if not found in the workspace. */
 export async function deleteReview(
-  db: Db,
+  db: DbOrTx,
   workspaceId: string,
   reviewId: string,
 ): Promise<boolean> {
@@ -94,14 +85,14 @@ export async function deleteReview(
 
 // ---- finding actions ------------------------------------------------------
 
-export async function getFinding(db: Db, findingId: string): Promise<FindingRow | undefined> {
+export async function getFinding(db: DbOrTx, findingId: string): Promise<FindingRow | undefined> {
   const [row] = await db.select().from(t.findings).where(eq(t.findings.id, findingId));
   return row;
 }
 
 /** Resolve workspace_id + pr_id for a finding (via review → pr). */
 export async function findingContext(
-  db: Db,
+  db: DbOrTx,
   findingId: string,
 ): Promise<{ finding: FindingRow; review: ReviewRow; pull: PullRow } | undefined> {
   const finding = await getFinding(db, findingId);
@@ -117,7 +108,7 @@ export async function findingContext(
 }
 
 export async function setFindingAccepted(
-  db: Db,
+  db: DbOrTx,
   findingId: string,
   at: Date | null,
 ): Promise<FindingRow | undefined> {
@@ -130,7 +121,7 @@ export async function setFindingAccepted(
 }
 
 export async function setFindingDismissed(
-  db: Db,
+  db: DbOrTx,
   findingId: string,
   at: Date | null,
 ): Promise<FindingRow | undefined> {

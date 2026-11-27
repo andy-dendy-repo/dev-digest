@@ -4,6 +4,18 @@ import { schema } from './schema.js';
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
+/** An open transaction on {@link Db} (what `db.transaction(cb)` hands to `cb`). */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/**
+ * What a repository runs its queries on: the shared client, or the transaction
+ * of a unit of work (see `unit-of-work.ts`). Taking this instead of `Db` lets
+ * the same repository class serve both paths. `db.transaction()` on a `Tx`
+ * opens a savepoint, so a repository may still make its own multi-statement
+ * writes atomic when it is already inside a unit of work.
+ */
+export type DbOrTx = Db | Tx;
+
 export interface DbHandle {
   db: Db;
   sql: postgres.Sql;

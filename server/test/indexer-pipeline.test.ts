@@ -107,6 +107,8 @@ function makeRepoStub(opts: {
     deleteRepoMapCache: async () => {},
     putRepoMapCache: async () => {},
   };
+  // Fake unit of work: no real transaction, `work` runs against the same stub.
+  Object.assign(stub, { transaction: async <T,>(work: (repo: typeof stub) => Promise<T>) => work(stub) });
 
   // The pipeline calls these via the typed repository; the stub satisfies the
   // structural shape. `unknown as` keeps the test isolated from the class's

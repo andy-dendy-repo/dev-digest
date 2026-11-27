@@ -1,6 +1,6 @@
 # onion-architecture
 
-**Version:** 1.1.0 · **Updated:** 2026-11-26 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
+**Version:** 1.2.1 · **Updated:** 2026-11-27 · **Scope:** `server/` (Fastify, Drizzle, Zod) and `reviewer-core/`
 
 This skill says which ring each backend file belongs to, which way imports may point, and
 where ports, repositories, adapters and Zod parsing live. It also ships a dependency-cruiser
@@ -43,3 +43,4 @@ is for, how to maintain the skill, and its version history.
 | 1.0.0 | 2026-11-26 | First version: rings, recipes and per-tool rules for `server/` and `reviewer-core/`; dependency-cruiser layer check with 58 baselined violations; three eval cases |
 | 1.1.0 | 2026-11-26 | After the first eval review: container getters for new repositories/adapters are typed as the port; server-only ports go in the server copy of `vendor/shared/adapters.ts` only; type-check new test files (`pnpm typecheck` skips `test/`); new recipe for adding an input to the review engine; new `engine-readme-context` eval case |
 | 1.2.0 | 2026-11-26 | The layer check and `tsconfig.test.json` (tests type-check, 0 errors) run in CI `server-unit`; the client `vendor/shared` copy is synced and CI keeps it identical, so ports are added to the server copy and synced |
+| 1.2.1 | 2026-11-27 | `references/drizzle.md` transactions section matches the real code: per-module `UnitOfWork` port, generic `DrizzleUnitOfWork`, `DbOrTx`, repository-local transactions for its own aggregate |
