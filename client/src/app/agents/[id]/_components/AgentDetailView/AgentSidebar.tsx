@@ -37,6 +37,7 @@ export function AgentSidebar({ agents, activeId, tab }: { agents: Agent[]; activ
           <AgentCard
             key={a.id}
             ag={a}
+            skillCount={a.skill_count}
             active={a.id === activeId}
             onClick={() => router.push(`/agents/${a.id}?tab=${tab}`)}
             onToggle={(enabled) => update.mutate({ id: a.id, patch: { enabled } })}

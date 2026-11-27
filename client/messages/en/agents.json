@@ -93,7 +93,18 @@
     "title": "Skills",
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
-    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Toggle to attach."
+    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag to reorder (or focus a handle and press Alt+↑/↓). Check a skill to enable it for this agent.",
+    "toggleLabel": "Enable {name} for this agent",
+    "moveHandle": "Reorder {name}",
+    "globallyDisabled": "off globally",
+    "globallyDisabledTitle": "This skill is disabled on the Skills page, so it never runs, whatever this checkbox says.",
+    "loadError": "Could not load this agent's skills.",
+    "empty": {
+      "title": "No skills yet",
+      "body": "Create or import skills on the Skills page, then attach them here.",
+      "cta": "Go to Skills"
+    },
+    "noMatch": "No skills match this filter."
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
