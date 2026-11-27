@@ -4,7 +4,12 @@
    only their paths travel, as `skipped`. Nothing here executes anything. */
 import { unzipSync } from "fflate";
 import type { SkillImportRequest } from "@devdigest/shared";
-import { SKILL_IMPORT_MAX_ENTRIES, SKILL_IMPORT_MAX_ENTRY_CHARS } from "@devdigest/shared";
+
+/* Same limits as the server's `SkillImportRequest` contract. Copied, not imported:
+   the client may only `import type` from @devdigest/shared — its barrel uses `.js`
+   specifiers that Next's webpack cannot resolve (Vitest can, so tests won't catch it). */
+const SKILL_IMPORT_MAX_ENTRIES = 50;
+const SKILL_IMPORT_MAX_ENTRY_CHARS = 262_144;
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 /** Cap on the total inflated size of the text entries (zip-bomb guard). */
