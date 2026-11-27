@@ -9,6 +9,9 @@ in the DB). The canonical, reviewable copies live next to this file:
 - [`general-reviewer.md`](./general-reviewer.md)
 - [`security-reviewer.md`](./security-reviewer.md)
 - [`performance-reviewer.md`](./performance-reviewer.md)
+- [`test-quality-reviewer.md`](./test-quality-reviewer.md) — deliberately general; its
+  detailed checklists live in the linked skills (`test-branch-coverage`,
+  `test-corner-cases`, `test-mock-discipline`, seeded in `server/src/db/seed-skills.ts`)
 
 > The DB is the source of truth at run time. These files are the human-readable
 > originals — when you change a prompt, edit the file here **and** push it to the

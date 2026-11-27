@@ -6,7 +6,9 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+  TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+import { SEED_SKILLS, SEED_AGENT_SKILLS } from './seed-skills.js';
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -18,11 +20,16 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  *
  * Seeds: default workspace + system user + membership, default settings,
  * demo repo (acme/payments-api), PR #482 with files/commits, a sample review
- * with a few findings, and the three built-in agents (General + Security +
- * Performance), all on the default openrouter/deepseek-v4-flash provider+model.
+ * with a few findings, and the four built-in agents (General + Security +
+ * Performance + Test Quality), all on the default openrouter/deepseek-v4-flash
+ * provider+model.
  *
- * Later milestones populate the other tables (skills, conventions, memory, eval,
- * …) once their features are built — they start empty here.
+ * M2 skills (./seed-skills.ts): each skill is created once per workspace (by
+ * name) with its `skill_versions` v1 row; an agent's skill links are written only
+ * while it has none, so a re-seed never overwrites a user's choices.
+ *
+ * Later milestones populate the other tables (conventions, memory, eval, …) once
+ * their features are built — they start empty here.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
@@ -175,7 +182,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     ]);
   }
 
-  // ---- built-in agents (the three starter presets) ----
+  // ---- built-in agents ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).
   const seedAgents: Array<typeof t.agents.$inferInsert> = [
     {
@@ -211,6 +218,17 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       createdBy: userId,
     },
+    {
+      workspaceId,
+      name: 'Test Quality Reviewer',
+      description: 'Finds untested branches, missing corner cases, over-mocking and flaky tests.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
   ];
   for (const a of seedAgents) {
     const [existing] = await db
@@ -220,7 +238,54 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     if (!existing) await db.insert(t.agents).values(a);
   }
 
+  await seedSkills(db, workspaceId);
+
   return { workspaceId, userId };
+}
+
+/** Seed the built-in skills and the seeded agents' skill links (see file header). */
+async function seedSkills(db: Db, workspaceId: string): Promise<void> {
+  const skillIds = new Map<string, string>();
+  for (const s of SEED_SKILLS) {
+    const [existing] = await db
+      .select({ id: t.skills.id })
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, s.name)));
+    if (existing) {
+      skillIds.set(s.name, existing.id);
+      continue;
+    }
+    const id = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(t.skills)
+        .values({ workspaceId, ...s, version: 1 })
+        .returning({ id: t.skills.id });
+      await tx.insert(t.skillVersions).values({ skillId: row!.id, version: 1, body: s.body });
+      return row!.id;
+    });
+    skillIds.set(s.name, id);
+  }
+
+  for (const [agentName, links] of Object.entries(SEED_AGENT_SKILLS)) {
+    const [agent] = await db
+      .select({ id: t.agents.id })
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, agentName)));
+    if (!agent) continue;
+    const [anyLink] = await db
+      .select({ skillId: t.agentSkills.skillId })
+      .from(t.agentSkills)
+      .where(eq(t.agentSkills.agentId, agent.id))
+      .limit(1);
+    if (anyLink) continue;
+    await db.insert(t.agentSkills).values(
+      links.map((l, order) => {
+        const skillId = skillIds.get(l.skill);
+        if (!skillId) throw new Error(`seed: unknown skill "${l.skill}" linked to ${agentName}`);
+        return { agentId: agent.id, skillId, order, enabled: l.enabled };
+      }),
+    );
+  }
 }
 
 // CLI entrypoint
