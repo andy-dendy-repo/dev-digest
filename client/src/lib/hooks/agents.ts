@@ -3,12 +3,13 @@
 
 import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Agent, ModelInfo, Provider, ReviewStrategy } from "@devdigest/shared";
+import type { Agent, AgentSkillView, ModelInfo, Provider, ReviewStrategy, SetAgentSkillsRequest } from "@devdigest/shared";
 
 export const agentKeys = {
   all: ["agents"] as const,
   list: () => [...agentKeys.all, "list"] as const,
   detail: (id: string) => [...agentKeys.all, "detail", id] as const,
+  skills: (id: string) => [...agentKeys.all, "skills", id] as const,
 };
 
 /** Model lists per provider. Settings invalidates them when a provider key changes. */
@@ -108,4 +109,48 @@ export function useDeleteAgent() {
 /** Dynamic model list for a provider (editor model picker). */
 export function useProviderModels(provider: Provider | null | undefined) {
   return useQuery(providerModelsOptions(provider ?? null));
+}
+
+export const agentSkillsOptions = (agentId: string) =>
+  queryOptions({
+    queryKey: agentKeys.skills(agentId),
+    queryFn: () => api.get<AgentSkillView[]>(`/agents/${agentId}/skills`),
+  });
+
+/** The agent's linked skills, in prompt order (Skills tab). */
+export function useAgentSkills(agentId: string) {
+  return useQuery(agentSkillsOptions(agentId));
+}
+
+/**
+ * Replace the agent's ordered skill list with `next` (its linked skills, in
+ * prompt order). Optimistic: the tab reorders/toggles at once and rolls back if
+ * the server refuses.
+ */
+export function useSetAgentSkills(agentId: string) {
+  const qc = useQueryClient();
+  const key = agentKeys.skills(agentId);
+  return useMutation({
+    mutationFn: (next: AgentSkillView[]) => {
+      const body: SetAgentSkillsRequest = {
+        skills: next.map((v) => ({ skill_id: v.skill_id, enabled: v.enabled })),
+      };
+      return api.put<AgentSkillView[]>(`/agents/${agentId}/skills`, body);
+    },
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<AgentSkillView[]>(key);
+      qc.setQueryData(key, next);
+      return { previous };
+    },
+    onError: (_e, _next, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(key, data);
+      // skill_count on the cards + the new agent version.
+      qc.invalidateQueries({ queryKey: agentKeys.list() });
+      qc.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
+    },
+  });
 }

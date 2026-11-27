@@ -3,6 +3,7 @@
    lucide-react components so all ported components keep the same API. */
 import {
   GitPullRequest,
+  GripVertical,
   Layers,
   Sparkles,
   Brain,
@@ -85,6 +86,7 @@ import {
 /** Names used throughout the ported prototype, mapped to lucide-react. */
 export const Icon = {
   GitPullRequest,
+  GripVertical,
   Layers,
   Sparkles,
   Brain,
